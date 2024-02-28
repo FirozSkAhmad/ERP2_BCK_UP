@@ -36,10 +36,20 @@ const PropertyDetailsModel = global.DATA.CONNECTION.mysql.define("PropertyDetail
         allowNull: false,
         default: 0
     },
-    deleted: {
+    semi_deleted: {
         type: Sequelize.DataTypes.STRING(100),
         allowNull: false,
         default: 'false'
+    },
+    completely_deleted: {
+        type: Sequelize.DataTypes.STRING(100),
+        allowNull: false,
+        default: 'false'
+    },
+    date_of_deletion: {
+        type: Sequelize.DataTypes.STRING(100),
+        allowNull: true,
+        default: null
     },
     createdAt: {
         type: Sequelize.DataTypes.DATE,

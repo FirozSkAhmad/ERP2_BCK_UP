@@ -27,10 +27,6 @@ router.get('/getPendingReceiptsList', jwtHelperObj.verifyAccessToken, async (req
 
             const reciptsServiceObj = new ReceiptServices();
             const data = await reciptsServiceObj.getPendingReceiptsList()
-                .catch(err => {
-                    console.log("errors:", err.message);
-                    throw err;
-                })
 
             res.send({
                 "status": 201,
@@ -55,10 +51,6 @@ router.get('/getParticularReceiptData', jwtHelperObj.verifyAccessToken, async (r
             const { receipt_id } = req.query
             const reciptsServiceObj = new ReceiptServices();
             const data = await reciptsServiceObj.getParticularReceiptData(receipt_id)
-                .catch(err => {
-                    console.log("errors:", err.message);
-                    throw err;
-                })
 
             res.send({
                 "status": 201,
@@ -110,10 +102,6 @@ router.get('/getRejectedReceiptsList', jwtHelperObj.verifyAccessToken, async (re
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const reciptsServiceObj = new ReceiptServices();
             const data = await reciptsServiceObj.getRejectedReceiptsList()
-                .catch(err => {
-                    console.log("errors:", err.message);
-                    throw err;
-                })
 
             res.send({
                 "status": 200,
@@ -133,15 +121,11 @@ router.get('/getRejectedReceiptsList', jwtHelperObj.verifyAccessToken, async (re
     }
 })
 
-router.get('/getPartPaymentHistory', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.get('/getPartPaymentHistoryList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const reciptsServiceObj = new ReceiptServices();
-            const data = await reciptsServiceObj.getPartPaymentHistory()
-                .catch(err => {
-                    console.log("errors:", err.message);
-                    throw err;
-                })
+            const data = await reciptsServiceObj.getPartPaymentHistoryList()
 
             res.send({
                 "status": 201,
@@ -161,6 +145,147 @@ router.get('/getPartPaymentHistory', jwtHelperObj.verifyAccessToken, async (req,
     }
 })
 
+router.get('/getParticularPartPaymentHistory', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
+            const reciptsServiceObj = new ReceiptServices();
+            const data = await reciptsServiceObj.getParticularPartPaymentHistory(req.body)
+
+            res.send({
+                "status": 201,
+                "message": Constants.SUCCESS,
+                "data": data
+            })
+        } else {
+            res.send({
+                "status": 401,
+                "message": "only SUPER ADMIN and MANAGER has access to create a getParticularPartPaymentHistory",
+            })
+        }
+
+    } catch (err) {
+        next(err);
+    }
+})
+
+router.put('/editParticularPartPaymentAmount', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        if (req.aud.split(":")[1] === "SUPER ADMIN") {
+            const reciptsServiceObj = new ReceiptServices();
+            const data = await reciptsServiceObj.editParticularPartPaymentAmount(req.body)
+
+            res.send({
+                "status": 200,
+                "message": Constants.SUCCESS,
+                "data": data
+            })
+        } else {
+            res.send({
+                "status": 401,
+                "message": "only SUPER ADMIN has access to editParticularPartPaymentAmount",
+            })
+        }
+
+    } catch (err) {
+        console.error("Error in /editParticularPartPaymentAmount route:", err.message);
+        next(err);
+    }
+})
+
+router.put('/deleteParticularPartPaymentAmount', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        if (req.aud.split(":")[1] === "SUPER ADMIN") {
+            const reciptsServiceObj = new ReceiptServices();
+            const data = await reciptsServiceObj.deleteParticularPartPaymentAmount(req.body)
+
+            res.send({
+                "status": 200,
+                "message": Constants.SUCCESS,
+                "data": data
+            })
+        } else {
+            res.send({
+                "status": 401,
+                "message": "only SUPER ADMIN has access to editParticularPartPaymentAmount",
+            })
+        }
+
+    } catch (err) {
+        console.error("Error in /editParticularPartPaymentAmount route:", err.message);
+        next(err);
+    }
+})
+
+router.put('/deleteParticularProjectPartPayments', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        if (req.aud.split(":")[1] === "SUPER ADMIN") {
+            const reciptsServiceObj = new ReceiptServices();
+            const data = await reciptsServiceObj.deleteParticularProjectPartPayments(req.body)
+
+            res.send({
+                "status": 200,
+                "message": Constants.SUCCESS,
+                "data": data
+            })
+        } else {
+            res.send({
+                "status": 401,
+                "message": "only SUPER ADMIN has access to editParticularPartPaymentAmount",
+            })
+        }
+
+    } catch (err) {
+        console.error("Error in /editParticularPartPaymentAmount route:", err.message);
+        next(err);
+    }
+})
+
+router.get('/getPartPaymentDeletedHistoryList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
+            const reciptsServiceObj = new ReceiptServices();
+            const data = await reciptsServiceObj.getPartPaymentDeletedHistoryList()
+
+            res.send({
+                "status": 201,
+                "message": Constants.SUCCESS,
+                "data": data
+            })
+        } else {
+            res.send({
+                "status": 401,
+                "message": "only SUPER ADMIN and MANAGER has access to create a getPartPaymentHistory",
+            })
+        }
+
+
+    } catch (err) {
+        next(err);
+    }
+})
+
+router.get('/getParticularPartPaymentDeletedHistory', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
+            const reciptsServiceObj = new ReceiptServices();
+            const data = await reciptsServiceObj.getParticularPartPaymentDeletedHistory(req.body)
+
+            res.send({
+                "status": 201,
+                "message": Constants.SUCCESS,
+                "data": data
+            })
+        } else {
+            res.send({
+                "status": 401,
+                "message": "only SUPER ADMIN and MANAGER has access to create a getParticularPartPaymentHistory",
+            })
+        }
+
+    } catch (err) {
+        next(err);
+    }
+})
 
 router.get('/getAvailableReceiptProjectNames', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {

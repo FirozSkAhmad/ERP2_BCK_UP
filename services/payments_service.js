@@ -176,11 +176,14 @@ class ReceiptServices {
         const priceAfterDiscount = payload.property_price - discountAmount;
         const newAmountPaidTillNow = (currentDetails.amount_paid_till_now || 0) + payload.amount;
         const newPendingPayment = priceAfterDiscount - newAmountPaidTillNow;
+        const dateString = new Date().toISOString().slice(0, 10); // Simplified date handling
+
 
         let updates = {
             amount_paid_till_now: newAmountPaidTillNow,
             pending_payment: newPendingPayment,
-            no_of_part_payments: (currentDetails.no_of_part_payments || 0) + 1
+            no_of_part_payments: (currentDetails.no_of_part_payments || 0) + 1,
+            date_of_pp_payment: dateString
         };
 
         // Only update property_price and discount_percent if they are different from the current values

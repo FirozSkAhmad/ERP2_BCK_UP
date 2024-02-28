@@ -7,6 +7,7 @@ const CommissionsModel = require('../utils/Models/Commission/CommissionsModel');
 const PropertyDetailsModel = require('../utils/Models/PropertyDetails/PropertyDetailsModel');
 const TokenOrAdvanceHistoryModel = require('../utils/Models/TokenOrAdvanceHistory/TokenOrAdvanceHistoryModel');
 const BlockedProjectsModel = require('../utils/Models/BlockedProjects/BlockedProjectsModel');
+const PartPaymentHistoryModel = require('../utils/Models/PartPaymentHistory/PartPaymentHistoryModel');
 const Constants = require('../utils/Constants/response_messages')
 
 
@@ -295,9 +296,12 @@ class ReceiptServices {
         }
     }
 
-    async getPartPaymentHistory() {
+    async getPartPaymentHistoryList() {
         try {
             const ReceiptsData = await ReceiptsModel.findAll({
+                where: {
+                    receipt_status: "A" // Assuming "A" means "Approved" or similar
+                },
                 include: [
                     {
                         model: PropertyDetails,
@@ -308,10 +312,10 @@ class ReceiptServices {
                         }
                     },
                     {
-                        model: Projects, // Corrected from `module` to `model`
+                        model: Projects,
                     },
                     {
-                        model: Commissions, // Corrected from `module` to `model`
+                        model: users,
                     }
                 ]
             });
@@ -319,6 +323,255 @@ class ReceiptServices {
             return ReceiptsData;
         } catch (err) {
             console.error("Error while getting receipts:", err.message);
+
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            // Log and throw a generic server error for unknown errors
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+        }
+    }
+
+    async getParticularPartPaymentHistory(payload) {
+        try {
+            const ParticularPartPaymentHistory = await PartPaymentHistoryModel.findAll({
+                where: {
+                    project_id: payload.project_id
+                }
+            });
+
+            return ParticularPartPaymentHistory;
+        } catch (err) {
+            console.error("Error while getParticularPartPaymentHistory:", err.message);
+
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            // Log and throw a generic server error for unknown errors
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+        }
+    }
+
+    async editParticularPartPaymentAmount(payload) {
+        try {
+            // Use findOne to get a single record
+            const CheckParticularPartPayment = await PartPaymentHistoryModel.findOne({
+                where: {
+                    pp_id: payload.pp_id
+                }
+            });
+
+            if (!CheckParticularPartPayment) {
+                throw new Error('No such payment record exists.');
+            }
+
+            const ProjectData = await ProjectsModel.findOne({
+                where: {
+                    project_id: CheckParticularPartPayment.project_id,
+                    status: "PART-PAYMENT"
+                }
+            });
+
+            if (!ProjectData) {
+                throw new Error('We can only edit the amount only if the status of project is PART-PAYMENT');
+            }
+
+            // Ensure the new amount is positive
+            if (payload.new_amount <= 0) {
+                throw new Error('New amount must be greater than zero.');
+            }
+
+            // Check for same amount submission
+            if (payload.new_amount === CheckParticularPartPayment.amount) {
+                throw new Error('The new amount is the same as the current amount. Please provide a different amount to update.');
+            }
+
+            const dateString = new Date().toISOString().slice(0, 10); // Simplified date handling
+
+            // Update directly with the object, no need to wrap updatedData in another object
+            await PartPaymentHistoryModel.update({
+                previous_amount: CheckParticularPartPayment.amount, // Assuming your model has this field
+                amount: payload.new_amount,
+                edited_date_of_pp_payment: dateString, // Correcting typo from 'editied' to 'edited'
+            }, {
+                where: {
+                    pp_id: payload.pp_id
+                }
+            });
+
+            return 'Successfully updated the particular part payment amount.';
+        } catch (err) {
+            console.error("Error in editParticularPartPaymentAmount:", err.message);
+
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            // Custom error handling can be adjusted as needed
+            throw new Error("An internal server error occurred while updating part payment.");
+        }
+    }
+
+    async deleteParticularPartPaymentAmount(payload) {
+        let transaction;
+        try {
+            // Start a transaction
+            transaction = await DATA.CONNECTION.mysql.transaction();
+
+            const CheckParticularPartPayment = await PartPaymentHistoryModel.findOne({
+                where: { pp_id: payload.pp_id },
+                transaction: transaction
+            });
+
+            if (!CheckParticularPartPayment) {
+                throw new Error('No such payment record exists.');
+            }
+
+            const ProjectData = await ProjectsModel.findOne({
+                where: {
+                    project_id: CheckParticularPartPayment.project_id,
+                },
+                transaction: transaction
+            });
+
+            if (!ProjectData) {
+                throw new Error('The linked project does not exist.');
+            }
+
+            const propertyDetails = await PropertyDetailsModel.findOne({
+                where: { project_id: CheckParticularPartPayment.project_id },
+                transaction: transaction
+            });
+
+            if (!propertyDetails) {
+                throw new Error('Property details not found.');
+            }
+
+            // Decrement no_of_part_payments and update project status if necessary
+            if (propertyDetails.no_of_part_payments === 1) {
+                await ProjectsModel.update({ status: "AVAILABLE" }, {
+                    where: { project_id: CheckParticularPartPayment.project_id },
+                    transaction: transaction
+                });
+            }
+
+            await propertyDetails.decrement('no_of_part_payments', { by: 1, transaction: transaction });
+
+            const dateString = new Date().toISOString().slice(0, 10); // Simplified date handling
+
+            await PartPaymentHistoryModel.update({
+                deleted: 'true',
+                date_of_deletion: dateString
+            }, {
+                where: { pp_id: payload.pp_id },
+                transaction: transaction
+            });
+
+            // Commit the transaction after all operations are successful
+            await transaction.commit();
+            return 'Successfully deleted the particular part payment amount.';
+        } catch (err) {
+            console.error("Error in deleteParticularPartPaymentAmount:", err.message);
+            if (transaction) {
+                await transaction.rollback(); // Rollback the transaction in case of an error
+            }
+            throw new Error("An internal server error occurred while updating part payment.");
+        }
+    }
+
+    async deleteParticularProjectPartPayments(payload) {
+        let transaction;
+        try {
+            // Start a transaction
+            transaction = await DATA.CONNECTION.mysql.transaction();
+
+            const ProjectData = await ProjectsModel.findOne({
+                where: { project_id: payload.project_id },
+                transaction: transaction // Include transaction in the query
+            });
+
+            if (!ProjectData) {
+                throw new Error("The specified project does not exist.");
+            }
+
+            await ProjectsModel.update({ status: "AVAILABLE" }, {
+                where: { project_id: payload.project_id },
+                transaction: transaction // Include transaction in the query
+            });
+
+            const dateString = new Date().toISOString().slice(0, 10); // Ensure dateString is defined
+
+            // Reset the no_of_part_payments for the specified project_id
+            await PropertyDetailsModel.update({ no_of_part_payments: 0 }, {
+                where: { project_id: payload.project_id },
+                transaction: transaction // Use transaction
+            });
+
+            // Update PartPaymentHistoryModel to mark payments as deleted
+            await PartPaymentHistoryModel.update({
+                deleted: 'true',
+                date_of_deletion: dateString
+            }, {
+                where: { project_id: payload.project_id },
+                transaction: transaction // Use transaction
+            });
+
+            await transaction.commit(); // Commit the transaction
+            return 'Successfully deleted the entire part payments.';
+        } catch (err) {
+            console.error("Error in deleteParticularProjectPartPayments:", err.message);
+            if (transaction) await transaction.rollback(); // Rollback the transaction in case of an error
+            throw new Error("An internal server error occurred while updating part payment.");
+        }
+    }
+
+    async getPartPaymentDeletedHistoryList() {
+        try {
+            const ReceiptsData = await ReceiptsModel.findAll({
+                where: {
+                    receipt_status: "A" // Assuming "A" means "Approved" or similar
+                },
+                include: [
+                    {
+                        model: PropertyDetails,
+                        where: {
+                            [Sequelize.Op.or]: [
+                                { semi_deleted: "true" },
+                                { deleted: "true" }
+                            ]
+                        }
+                    },
+                    {
+                        model: Projects,
+                    },
+                    {
+                        model: users,
+                    }
+                ]
+            });
+
+            return ReceiptsData;
+        } catch (err) {
+            console.error("Error while getPartPaymentDeletedHistoryList:", err.message);
+            // Handle errors appropriately
+            throw new Error("An internal server error occurred while fetching part payment deleted history.");
+        }
+    }
+
+    async getParticularPartPaymentDeletedHistory(payload) {
+        try {
+            const ParticularPartPaymentHistory = await PartPaymentHistoryModel.findAll({
+                where: {
+                    project_id: payload.project_id,
+                    deleted: 'true'
+                }
+            });
+
+            return ParticularPartPaymentHistory;
+        } catch (err) {
+            console.error("Error while getParticularPartPaymentDeletedHistory:", err.message);
 
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
