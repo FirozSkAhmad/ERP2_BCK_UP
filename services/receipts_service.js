@@ -1,6 +1,7 @@
 const createError = require('http-errors')
 const { SQL_ERROR } = require('../utils/Constants/response_messages')
 const { Sequelize } = require('sequelize');
+const UsersModel = require('../utils/Models/Users/UsersModel');
 const ReceiptsModel = require('../utils/Models/Receipts/ReceiptsModel');
 const ProjectsModel = require('../utils/Models/Projects/ProjectsModel');
 const CommissionsModel = require('../utils/Models/Commission/CommissionsModel');
@@ -16,130 +17,172 @@ class ReceiptServices {
 
     }
 
-    async createReceipt(payload) {
+    async createReceipt(payload, commission_holder_id) {
+        let transaction;
         try {
-            const transaction = await DATA.CONNECTION.mysql.transaction();
+            transaction = await DATA.CONNECTION.mysql.transaction();
 
-            // Construct payload identifier based on project type
-            let payloadIdentifierCheck = `${payload.project_type}_${payload.project_name}`;
-            switch (payload.project_type) {
-                case 'APARTMENT':
-                    payloadIdentifierCheck += `_${payload.tower_number}_${payload.flat_number}`;
-                    break;
-                case 'VILLA':
-                    payloadIdentifierCheck += `_${payload.villa_number}`;
-                    break;
-                case 'PLOT':
-                    payloadIdentifierCheck += `_${payload.plot_number}`;
-                    break;
-                case 'FARM_LAND':
-                    payloadIdentifierCheck += `_${payload.plot_number}_${payload.sq_yards}`;
-                    break;
-                default:
-                    throw new Error("Provide Correct Project Type");
-            }
+            // Validate project type and construct identifier
+            let payloadIdentifierCheck = this.constructPayloadIdentifier(payload);
 
+            // Check if project is available
             let checkProject = await ProjectsModel.findOne({
                 where: { pid: payloadIdentifierCheck, status: "AVAILABLE" },
                 transaction
             });
-
             if (!checkProject) {
-                throw new Error("Provided Project is not Available to Onboard the Client");
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Provided Project is not Available to Onboard the Client");
             }
 
+            // Check if a receipt for the project already exists
             const checkReceiptAlready = await ReceiptsModel.findOne({
+                where: { project_id: checkProject.project_id },
+                transaction
+            });
+            if (checkReceiptAlready) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Receipt already created for current project");
+            }
+
+            if (!['TOKEN', 'ADVANCE', 'BLOCKED'].includes(payload.status.toUpperCase())) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Type of commission must be 'TOKEN', 'ADVANCE', 'BLOCKED'");
+            }
+
+            // Validate payload for missing fields based on status
+            this.validatePayloadForStatus(payload);
+
+            // Update the project's status in the ProjectsModel
+            await ProjectsModel.update({ status: payload.status.toUpperCase() }, {
                 where: {
-                    project_id: checkProject.project_id,
-                    receipt_status: "NV"
+                    project_id: checkProject.project_id
                 },
                 transaction
             });
 
-            if (checkReceiptAlready) {
-                throw new Error("Receipt already created for current project need to validate by SUPER ADMIN");
+            // Perform operations based on payload status
+            await this.handleStatusRelatedOperations(payload, checkProject.project_id, transaction);
+
+            if (!['VALIDATION', 'SOLD'].includes(payload.type_of_commission.toUpperCase())) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Type of commission must be either VALIDATION or SOLD");
             }
-
-            const dateString = new Date().toISOString().slice(0, 10); // Simplified date handling
-
-            let propertyDetail = {
-                project_id: checkProject.project_id,
-                property_price: payload.property_price || null,
-                discount_percent: payload.discount_percent || 0, // Ensuring a default value of 0
-                amount_paid_till_now: payload.ta_amount || null,
-                pending_payment: null // Initialized here
-            };
-
-            // Adjusted to calculate pending_payment based on the presence of property_price and ta_amount
-            if (payload.property_price && payload.ta_amount !== undefined) {
-                const discountAmount = (payload.property_price * (payload.discount_percent || 0)) / 100;
-                const priceAfterDiscount = payload.property_price - discountAmount;
-                propertyDetail.pending_payment = priceAfterDiscount - payload.ta_amount;
-            }
-
-            // Update the project's status in the ProjectsModel
-            await ProjectsModel.update({ status: payload.status }, {
-                where: {
-                    project_id: checkProject.project_id
-                }
-            });
-
-            if (['TOKEN', 'ADVANCE'].includes(payload.status)) {
-                const tokenOrAdvanceData = {
-                    ta_mode_of_payment: payload.ta_mode_of_payment,
-                    ta_amount: payload.ta_amount,
-                    date_of_ta_payment: dateString
-                };
-                const tokenOrAdvanceRecord = await TokenOrAdvanceHistoryModel.create(tokenOrAdvanceData, { transaction });
-                propertyDetail.ta_history_id = tokenOrAdvanceRecord.id;
-            } else if (payload.status === 'BLOCKED') {
-                const blockedData = {
-                    date_of_blocked: dateString,
-                    no_of_days_blocked: payload.no_of_days_blocked,
-                    remark: payload.remark || null,
-                };
-                const blockedRecord = await BlockedProjectsModel.create(blockedData, { transaction });
-                propertyDetail.blocked_id = blockedRecord.id;
-            }
-
-            await PropertyDetailsModel.create(propertyDetail, { transaction });
-
-            if (!['VALIDATION', 'INCLUDES'].includes(payload.type_of_commission)) {
-                throw new Error("Type of commission must be either VALIDATION or INCLUDES");
-            }
-
             const commissionData = {
-                type_of_commission: payload.type_of_commission,
-                total_commission: payload?.total_commission ? payload.total_commission : null,
-                commission_received_till_now: payload?.commission_received_till_now ? payload.commission_received_till_now : null,
+                project_id: checkProject.project_id,
+                type_of_commission: payload.type_of_commission.toUpperCase(),
+                total_commission: payload.total_commission || null,
+                commission_received_till_now: payload.commission_received_till_now || null,
             };
 
             const commissionRecord = await CommissionsModel.create(commissionData, { transaction });
+            const dateString = new Date().toISOString().slice(0, 10);
 
             let receiptData = {
                 client_name: payload.client_name,
                 client_phn_no: payload.client_phn_no,
                 client_adhar_no: payload.client_adhar_no,
                 project_id: checkProject.project_id,
-                commission_holder_id: payload.commission_holder_id,
-                commission_id: commissionRecord.id,
+                pd_id: checkProject.project_id,
+                commission_holder_id,
+                commission_id: commissionRecord.commission_id,
+                date_of_onboard: dateString
             };
 
             const receiptRecord = await ReceiptsModel.create(receiptData, { transaction });
 
             await transaction.commit();
-            return receiptRecord;
+            return { message: "Receipt created successfully", receipt_id: receiptRecord.receipt_id };
         } catch (err) {
-            if (transaction) await transaction.rollback();
             console.error("Error in createNewProject: ", err.message);
 
+            if (transaction) await transaction.rollback();
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
             }
-            // Log and throw a generic server error for unknown errors
             throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
+    }
+
+    constructPayloadIdentifier(payload) {
+        let identifier = `${payload.project_type.toUpperCase()}_${payload.project_name}`;
+        switch (payload.project_type.toUpperCase()) {
+            case 'APARTMENT':
+                identifier += `_${payload.tower_number}_${payload.flat_number}`;
+                break;
+            case 'VILLA':
+                identifier += `_${payload.villa_number}`;
+                break;
+            case 'PLOT':
+            case 'FARM_LAND':
+                identifier += `_${payload.plot_number}`;
+                if (payload.project_type === 'FARM_LAND') {
+                    identifier += `_${payload.sq_yards}`;
+                }
+                break;
+            default:
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid Project Type");
+        }
+        return identifier;
+    }
+
+    validatePayloadForStatus(payload) {
+        const requiredFields = [];
+        if (['TOKEN', 'ADVANCE'].includes(payload.status)) {
+            requiredFields.push('ta_mode_of_payment', 'ta_amount');
+        } else if (payload.status === 'BLOCKED') {
+            requiredFields.push('no_of_days_blocked');
+        }
+
+        const missingFields = requiredFields.filter(field => !payload[field]);
+        if (missingFields.length > 0) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields for status ${payload.status}: ${missingFields.join(', ')}`);
+        }
+    }
+
+    async handleStatusRelatedOperations(payload, projectId, transaction) {
+        const dateString = new Date().toISOString().slice(0, 10);
+
+        // Handling based on status
+        let taHistoryId = null, blockedId = null;
+        if (['TOKEN', 'ADVANCE'].includes(payload.status.toUpperCase())) {
+            const tokenOrAdvanceData = {
+                project_id: projectId,
+                ta_mode_of_payment: payload.ta_mode_of_payment.toUpperCase(),
+                ta_amount: payload.ta_amount,
+                data_of_ta_payment: dateString
+            };
+            const tokenOrAdvanceRecord = await TokenOrAdvanceHistoryModel.create(tokenOrAdvanceData, { transaction });
+            taHistoryId = tokenOrAdvanceRecord.ta_history_id;
+        } else if (payload.status.toUpperCase() === 'BLOCKED') {
+            const blockedData = {
+                project_id: projectId,
+                date_of_blocked: dateString,
+                no_of_days_blocked: payload.no_of_days_blocked,
+                remark: payload.remark || null,
+            };
+            const blockedRecord = await BlockedProjectsModel.create(blockedData, { transaction });
+            blockedId = blockedRecord.blocked_id;
+        }
+
+        // Assuming property details and commissions are always created or updated:
+        const propertyDetails = {
+            pd_id: projectId,
+            property_price: payload.property_price || null,
+            discount_percent: payload.discount_percent || 0,
+            amount_paid_till_now: payload.ta_amount || null,
+            pending_payment: this.calculatePendingPayment(payload),
+            ta_history_id: taHistoryId, // from TOKEN or ADVANCE handling
+            blocked_id: blockedId, // from BLOCKED handling
+        };
+
+        await PropertyDetailsModel.create(propertyDetails, { transaction });
+    }
+
+    calculatePendingPayment(payload) {
+        if (payload.property_price && payload.ta_amount !== undefined) {
+            const discountAmount = (payload.property_price * (payload.discount_percent || 0)) / 100;
+            const priceAfterDiscount = payload.property_price - discountAmount;
+            return priceAfterDiscount - payload.ta_amount;
+        }
+        return null; // Default to null if necessary values are not provided
     }
 
     async getPendingReceiptsList() {
@@ -148,85 +191,136 @@ class ReceiptServices {
                 where: {
                     receipt_status: "NV"
                 },
+                attributes: ['receipt_id'], // Fetch receipt_id
                 include: [{
-                    model: projects
+                    model: ProjectsModel,
+                    attributes: ['project_id', 'project_name', 'project_type'], // Include project details
                 }],
-            })
+            });
+
+            // Transform data to flatten the structure
+            // const transformedData = ReceiptsData.map(receipt => {
+            //     return {
+            //         receipt_id: receipt.receipt_id,
+            //         project_id: receipt.project.project_id,
+            //         project_name: receipt.project.project_name,
+            //         project_type: receipt.project.project_type
+            //     };
+            // });
 
             return ReceiptsData;
 
         } catch (err) {
             console.error("Error in getPendingReceiptsList: ", err.message);
 
-            // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
             }
-            // Log and throw a generic server error for unknown errors
             throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
+
+
     async validateReceipt(payload, approveOrReject) {
         try {
+            // Validate required fields for approval
+            if (approveOrReject === "APPROVE") {
+                this.validateApprovalPayload(payload);
+            }
             const dateString = new Date().toISOString().slice(0, 10); // Use the date string directly in the update
 
+            const receiptData = await ReceiptsModel.findOne(
+                { where: { receipt_id: payload.receipt_id } }
+            );
+
+            if (!receiptData) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid Receipt ID");
+            }
+
             await global.DATA.CONNECTION.mysql.transaction(async (t) => {
-                if (approveOrReject === "A") {
+                if (approveOrReject === "APPROVE") {
                     // Approval logic with transaction
                     const dataToUpdate = {
                         property_price: payload.property_price,
-                        discount_percent: payload.discount_percent || null,
+                        discount_percent: payload.discount_percent,
                     };
 
                     // Update PropertyDetails table
                     await PropertyDetailsModel.update(dataToUpdate, {
-                        where: { project_id: payload.project_id },
+                        where: { pd_id: receiptData.pd_id },
                         transaction: t
                     });
 
                     // Update Commissions table
                     await CommissionsModel.update(
                         { total_commission: payload.total_commission },
-                        { where: { commission_id: payload.commission_id }, transaction: t }
+                        { where: { commission_id: receiptData.commission_id }, transaction: t }
                     );
 
-                    if (['TOKEN', 'ADVANCE'].includes(payload.status)) {
-                        // Update the project's status in the ProjectsModel
-                        await ProjectsModel.update({ status: "PART-PAYMENT" }, {
-                            where: { project_id: payload.project_id },
+                    await ProjectsModel.update(
+                        { status: "PART-PAYMENT" }, // New status to set
+                        {
+                            where: {
+                                project_id: receiptData.project_id,
+                                // Ensure the current status is either 'TOKEN' or 'ADVANCE'
+                                status: {
+                                    [Sequelize.Op.or]: ['TOKEN', 'ADVANCE']
+                                }
+                            },
                             transaction: t
-                        });
-                    }
+                        }
+                    );
 
                     // Update the receipt's status in the ReceiptsModel
                     await ReceiptsModel.update(
                         { receipt_status: "A", date_of_validation: dateString },
                         { where: { receipt_id: payload.receipt_id }, transaction: t }
                     );
-                } else if (approveOrReject === "R") {
+                } else if (approveOrReject === "REJECT") {
                     // Rejection logic with transaction for consistency
                     await ReceiptsModel.update(
                         { receipt_status: "R", date_of_validation: dateString },
                         { where: { receipt_id: payload.receipt_id }, transaction: t }
                     );
 
+                    await ProjectsModel.update(
+                        { status: "AVAILABLE" },
+                        {
+                            where: {
+                                project_id: receiptData.project_id,
+                            },
+                            transaction: t
+                        }
+                    );
+
                     await PropertyDetailsModel.update(
-                        { deleted: "true" },
-                        { where: { project_id: payload.project_id }, transaction: t }
+                        { completely_deleted: true },
+                        { where: { pd_id: receiptData.project_id }, transaction: t }
                     );
                 } else {
                     throw new Error("Invalid operation.");
                 }
             });
 
-            return approveOrReject === "A" ? "RECEIPT APPROVED SUCCESSFULLY" : "RECEIPT REJECTED SUCCESSFULLY";
+            return approveOrReject === "APPROVE" ? "RECEIPT APPROVED SUCCESSFULLY" : "RECEIPT REJECTED SUCCESSFULLY";
         } catch (err) {
-            console.error("Error in validateReceipt: ", err.stack || err.message);
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred during receipt validation.");
+            console.error("Error in getPendingReceiptsList: ", err.message);
+
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
+    validateApprovalPayload(payload) {
+        const requiredFields = ['property_price', 'discount_percent', 'total_commission'];
+        const missingFields = requiredFields.filter(field => payload[field] === undefined);
+        if (missingFields.length > 0) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields: ${missingFields.join(', ')}`);
+        }
+    }
 
     async getRejectedReceiptsList() {
         try {
@@ -235,8 +329,10 @@ class ReceiptServices {
                     where: {
                         receipt_status: "R"
                     },
+                    attributes: ['receipt_id'], // Fetch receipt_id
                     include: [{
-                        model: projects
+                        model: ProjectsModel,
+                        attributes: ['project_id', 'project_name', 'project_type'], // Include project details
                     }],
                 }
             )
@@ -257,32 +353,54 @@ class ReceiptServices {
 
     async getParticularReceiptData(receipt_id) {
         try {
-            const ReceiptsData = await ReceiptsModel.findOne({
+            const ReceiptData = await ReceiptsModel.findOne({
                 where: {
                     receipt_id: receipt_id
                 },
+                attributes: ['receipt_id', 'client_name', 'client_phn_no', 'client_adhar_no', 'date_of_onboard', 'date_of_validation'],
                 include: [
                     {
-                        model: projects,
+                        model: UsersModel,
+                        attributes: ['user_id', 'user_name', 'role_type'],
+
                     },
                     {
-                        model: PropertyDetails,
+                        model: ProjectsModel,
+                        attributes: {
+                            exclude: ['pid', 'createdAt', 'updatedAt']
+                        }
+
+                    },
+                    {
+                        model: PropertyDetailsModel,
+                        attributes: {
+                            exclude: ['no_of_part_payments', 'semi_deleted', 'completely_deleted', 'date_of_deletion', 'createdAt', 'updatedAt']
+                        },
                         include: [
                             {
-                                model: TokenOrAdvanceHistories,
+                                model: TokenOrAdvanceHistoryModel,
+                                attributes: {
+                                    exclude: ['ta_history_id', 'createdAt', 'updatedAt']
+                                },
                             },
                             {
-                                model: BlockedProjects,
+                                model: BlockedProjectsModel,
+                                attributes: {
+                                    exclude: ['blocked_id', 'createdAt', 'updatedAt']
+                                },
                             },
                         ]
                     },
                     {
-                        model: commissions,
+                        model: CommissionsModel,
+                        attributes: {
+                            exclude: ['commission_id', 'createdAt', 'updatedAt']
+                        },
                     }
                 ],
             });
 
-            return ReceiptsData;
+            return ReceiptData;
 
         } catch (err) {
             console.error("Error in getParticularReceiptData: ", err.message);

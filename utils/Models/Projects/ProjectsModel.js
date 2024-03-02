@@ -8,7 +8,7 @@ const ProjectsModel = global.DATA.CONNECTION.mysql.define("projects", {
         autoIncrement: true
     },
     project_type: {
-        type: Sequelize.DataTypes.STRING(100),
+        type: Sequelize.DataTypes.ENUM('APARTMENT', 'VILLA', 'PLOT', 'FARM_LAND'),
         allowNull: false
     },
     project_name: {
@@ -17,29 +17,35 @@ const ProjectsModel = global.DATA.CONNECTION.mysql.define("projects", {
     },
     tower_number: {
         type: Sequelize.DataTypes.STRING(200),
-        allowNull: true
+        allowNull: true,
+        default: null
     },
     flat_number: {
         type: Sequelize.DataTypes.STRING(200),
+        allowNull: true,
+        default: null
     },
     villa_number: {
         type: Sequelize.DataTypes.STRING(200),
-        allowNull: true
+        allowNull: true,
+        default: null
     },
     plot_number: {
         type: Sequelize.DataTypes.STRING(200),
-        allowNull: true
+        allowNull: true,
+        default: null
     },
     sq_yards: {
         type: Sequelize.DataTypes.STRING(200),
-        allowNull: true
+        allowNull: true,
+        default: null
     },
     pid: {
         type: Sequelize.DataTypes.STRING(200),
         allowNull: false
     },
     status: {
-        type: Sequelize.DataTypes.STRING(100),
+        type: Sequelize.DataTypes.ENUM('AVAILABLE', 'TOKEN', 'ADVANCE', 'PART PAYMENT', 'BLOCK', 'SOLD'),
         allowNull: false,
         defaultValue: 'AVAILABLE'
     },

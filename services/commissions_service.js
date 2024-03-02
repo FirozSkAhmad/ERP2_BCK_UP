@@ -18,19 +18,21 @@ class CommissionService {
                     where: {
                         receipt_status: "A"
                     },
+                    attributes: ['receipt_id', 'client_name'],
                     include: [{
-                        model: commissions,
-                        model: projects,
-                        model: propertyDetails,
-                    }],
+                        model: ProjectsModel,
+                        attributes: ['project_id', 'project_type'],
+                    }, {
+                        model: CommissionsModel,
+                        attributes: ['total_commission', 'commission_recived_till_now'],
+                    }]
                 }
             )
 
-            const data = (response);
-            return data;
+            return response;
         }
         catch (err) {
-            console.error("Error in createNewProject: ", err.message);
+            console.error("Error in getCommissions: ", err.message);
 
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {

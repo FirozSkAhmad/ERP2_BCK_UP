@@ -1,7 +1,8 @@
 const Constants = require('../utils/Constants/response_messages')
 const JWTHelper = require('../utils/Helpers/jwt_helper')
 const sendgrid = require('@sendgrid/mail')
-const UsersModel = require('../models/User')
+const UsersModel = require('../utils/Models/Users/UsersModel')
+const _ = require('lodash');
 const { Op } = require('sequelize');
 
 class UserService {
@@ -11,86 +12,94 @@ class UserService {
 
     async createUser(userdetails) {
         try {
-            // If present in the users table: email already exists
-            const checkInUsers = await UsersModel.findOne({
+            const { email_id, password, confirmpassword, role_type, user_name } = userdetails;
+
+            // Check if email already exists with statuses 'NV' or 'A'
+            const existingUser = await UsersModel.findOne({
                 where: {
-                    emailId: userdetails.emailId,
+                    email_id: email_id,
                     status: {
-                        [Op.or]: ['NV', 'A'] // Match status 'NV' or 'A'
+                        [Op.or]: ['NV', 'A']
                     }
                 }
-            }).catch(err => {
-                console.log("Error during checking user", err.message)
-                throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR)
             });
 
-            if (checkInUsers) {
-                if (checkInUsers.status === "NV") {
-                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Given EmailId Already Register, But Might Not Approved Yet !")
-                }
-                else if (checkInUsers.status === "A") {
-                    throw new global.DATA.PLUGINS.httperrors.BadRequest("USER ALREADY IN USE WITH GIVEN EMAIL ID")
-
-                }
+            if (existingUser) {
+                const errorMessages = {
+                    NV: "Given EmailId Already Register, But Might Not Approved Yet !",
+                    A: "USER ALREADY IN USE WITH GIVEN EMAIL ID"
+                };
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(errorMessages[existingUser.status]);
             }
-
-            // User Id not present
-            const password = userdetails.password;
-            const confirmpassword = userdetails.confirmpassword;
 
             if (password !== confirmpassword) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("PASSWORDS DOES NOT MATCH")
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("PASSWORDS DOES NOT MATCH");
             }
 
-            const randomkey = await global.DATA.PLUGINS.bcrypt.genSalt(10);
-            const hashedPassword = await global.DATA.PLUGINS.bcrypt.hash(password, randomkey)
+            const salt = await global.DATA.PLUGINS.bcrypt.genSalt(10);
+            const hashedPassword = await global.DATA.PLUGINS.bcrypt.hash(password, salt);
+
+            let additionalFields = {};
+            if (role_type.toUpperCase() === 'CHANNEL PARTNER') {
+                const { address, contact_no, pancard_no, bank_ac_no, bussiness_experience } = userdetails;
+                if (!address || !contact_no || !pancard_no || !bank_ac_no || !bussiness_experience) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("All fields (address, contact_no, pancard_no, bank_ac_no, bussiness_experience) are required for CHANNEL PARTNER");
+                }
+                additionalFields = { address, contact_no, pancard_no, bank_ac_no, bussiness_experience };
+            } else {
+                additionalFields = {
+                    address: null,
+                    contact_no: null,
+                    pancard_no: null,
+                    bank_ac_no: null,
+                    bussiness_experience: null
+                };
+            }
+
+            const currentDate = new Date().toISOString().slice(0, 10); // Simplified date handling
 
             const userPayload = {
-                user_name: userdetails.user_name,
-                emailId: userdetails.emailId,
+                user_name,
+                email_id,
                 password: hashedPassword,
-                role_type: userdetails.type.toUpperCase(),
+                role_type: role_type.toUpperCase(),
                 status: "NV",
-                address: userdetails.address ? userdetails.address : null,
-                contact_no: userdetails.contact_no ? userdetails.contact_no : null,
-                pancard_no: userdetails.pancard_no ? userdetails.pancard_no : null,
-                bank_ac_no: userdetails.bank_ac_no ? userdetails.bank_ac_no : null,
-                bussiness_experience: userdetails.bussiness_experience ? userdetails.bussiness_experience : null
-            }
+                date_of_signUp: currentDate,
+                ...additionalFields
+            };
 
-            const newUser = await UsersModel.create(userPayload).catch(err => {
-                console.log("Error while adding in user table", err.message);
-                throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR);
-            });
+            const newUser = await UsersModel.create(userPayload);
 
             return newUser;
-        }
-        catch (err) {
-            throw err;
+        } catch (err) {
+            console.error("Error in createUser: ", err.message);
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
+
     async loginUser(userDetails) {
         try {
-            const user = await UsersModel.findOne({
+            const userData = await UsersModel.findOne({
                 "where": {
-                    emailId: userDetails.emailId
+                    email_id: userDetails.email_id
                 }
-            }).catch(err => {
-                throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR)
             })
 
-            if (user) {
-                if (user.status === "NV") {
+            if (userData) {
+                if (userData.status === "NV") {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Given EmailId Not Approved Yet!")
                 }
-                else if (user.status === "R") {
+                else if (userData.status === "R") {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("logIn Access For Given EmailId DENIED By SUPER ADMIN")
 
                 }
             }
 
-            const userPassword = user.password;
+            const userPassword = userData.password;
 
             const isValid = await global.DATA.PLUGINS.bcrypt.compare(userDetails.password, userPassword);
             if (!isValid) {
@@ -98,20 +107,36 @@ class UserService {
             }
 
             // Valid email and password
-            const tokenPayload = user.id.toString() + ":" + user.role_type
+            const tokenPayload = userData.user_id.toString() + ":" + userData.role_type
 
             const accessToken = await this.jwtObject.generateAccessToken(tokenPayload);
 
-            const refreshToken = await this.jwtObject.generateRefreshToken(tokenPayload);
+            // const refreshToken = await this.jwtObject.generateRefreshToken(tokenPayload);
 
             const data = {
-                accessToken, refreshToken, "id": user.id, "email": user.emailId, role_type: user.role_type
-            }
-            return data
+                accessToken,
+                ...userData.toJSON() // Assuming userData is a Sequelize model instance
+            };
 
+            // Now remove any properties you don't want to expose manually or using lodash
+            delete data.password; // For example, removing the password
+            delete data._previousDataValues;
+            delete data._changed;
+            delete data._options;
+            delete data.isNewRecord;
+
+            return data
         }
         catch (err) {
-            throw err;
+            console.error("Error in loginUser: ", err.message);
+
+            // Rethrow if it's a known error
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+
+            // Throw a generic error for unknown issues
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 

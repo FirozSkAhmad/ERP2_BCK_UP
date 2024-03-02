@@ -7,14 +7,22 @@ const router = express.Router()
 
 router.post('/createReceipt', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
-        const reciptsServiceObj = new ReceiptServices();
-        const data = await reciptsServiceObj.createReceipt(req.body)
+        if (req.aud.split(":")[1] === "SALES PERSON" || req.aud.split(":")[1] === "CHANNEL PARTNER") {
+            const commission_holder_id = req.aud.split(":")[0]
+            const reciptsServiceObj = new ReceiptServices();
+            const data = await reciptsServiceObj.createReceipt(req.body, commission_holder_id)
 
-        res.send({
-            "status": 201,
-            "message": Constants.SUCCESS,
-            "data": data
-        })
+            res.send({
+                "status": 201,
+                "message": Constants.SUCCESS,
+                "data": data
+            })
+        } else {
+            res.send({
+                "status": 401,
+                "message": "only SALES PERSON and CHANNEL PARTNER has access to createReceipt",
+            })
+        }
     }
     catch (err) {
         next(err);
@@ -36,7 +44,7 @@ router.get('/getPendingReceiptsList', jwtHelperObj.verifyAccessToken, async (req
         } else {
             res.send({
                 "status": 401,
-                "message": "only SUPER ADMIN and MANAGER has access to create a getReceipts",
+                "message": "only SUPER ADMIN and MANAGER has access to getPendingReceiptsList",
             })
         }
 
@@ -60,7 +68,7 @@ router.get('/getParticularReceiptData', jwtHelperObj.verifyAccessToken, async (r
         } else {
             res.send({
                 "status": 401,
-                "message": "only SUPER ADMIN and MANAGER has access to create a getReceipts",
+                "message": "only SUPER ADMIN and MANAGER has access to getParticularReceiptData",
             })
         }
 
@@ -69,24 +77,23 @@ router.get('/getParticularReceiptData', jwtHelperObj.verifyAccessToken, async (r
     }
 })
 
-router.post('/validateReceipt/:approveOrReject', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.put('/validateReceipt/:approveOrReject', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
-        const role = req.aud.split(":")[1];
-        if (role === Constants.ROLES.SUPER_ADMIN) { // Assuming Constants.ROLES.SUPER_ADMIN is defined elsewhere
-            const { approveOrReject } = req.params;
-            const receiptsServiceObj = new ReceiptServices();
 
-            try {
-                const data = await receiptsServiceObj.validateReceipt(req.body, approveOrReject);
-                res.status(201).send({
-                    "status": 201,
-                    "message": Constants.SUCCESS,
-                    "data": data
-                });
-            } catch (err) {
-                console.error("Error validating receipt:", err.message);
-                next(err); // Letting the central error handler take care of it
+        const role = req.aud.split(":")[1];
+        if (role === "SUPER ADMIN") { // Assuming Constants.ROLES.SUPER_ADMIN is defined elsewhere
+            const { approveOrReject } = req.params;
+            if (!['APPROVE', 'REJECT'].includes(approveOrReject.toUpperCase())) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("approveOrReject must be 'APPROVE'or 'REJECT'");
             }
+
+            const receiptsServiceObj = new ReceiptServices();
+            const data = await receiptsServiceObj.validateReceipt(req.body, approveOrReject.toUpperCase());
+            res.status(201).send({
+                "status": 201,
+                "message": Constants.SUCCESS,
+                "data": data
+            });
         } else {
             res.status(401).send({
                 "message": "Only SUPER ADMIN has access to validateReceipt",
@@ -111,7 +118,7 @@ router.get('/getRejectedReceiptsList', jwtHelperObj.verifyAccessToken, async (re
         } else {
             res.send({
                 "status": 401,
-                "message": "only SUPER ADMIN and MANAGER has access to create a getReceipts",
+                "message": "only SUPER ADMIN and MANAGER has access to getRejectedReceiptsList",
             })
         }
 

@@ -15,19 +15,27 @@ const UsersModel = global.DATA.CONNECTION.mysql.define("users", {
         type: Sequelize.STRING(200),
         allowNull: false
     },
-    emailId: {
+    email_id: {
         type: Sequelize.DataTypes.STRING(100),
         allowNull: false,
-        unique: 'true'
+        unique: true
     },
     role_type: {
-        type: Sequelize.DataTypes.STRING(100),
+        type: Sequelize.DataTypes.ENUM('SUPER ADMIN', 'SALES PERSON', 'MANAGER', 'CHANNEL PARTNER'),
         allowNull: false
     },
     status: {
         type: Sequelize.ENUM('NV', 'A', 'R'),
         allowNull: false,
         defaultValue: 'NV'
+    },
+    date_of_signUp: {
+        type: Sequelize.DataTypes.STRING(100),
+        allowNull: true
+    },
+    date_of_validation: {
+        type: Sequelize.DataTypes.STRING(100),
+        allowNull: true
     },
     address: {
         type: Sequelize.DataTypes.STRING(100),

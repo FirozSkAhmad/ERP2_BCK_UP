@@ -8,16 +8,18 @@ const CommissionsModel = global.DATA.CONNECTION.mysql.define("commissions", {
         autoIncrement: true
     },
     type_of_commission: {
-        type: Sequelize.DataTypes.STRING(100),
+        type: Sequelize.ENUM('VALIDATION', 'SOLD'),
         allowNull: false
     },
     total_commission: {
-        type: Sequelize.DataTypes.STRING(100),
-        allowNull: true
+        type: Sequelize.DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: 0
     },
     commission_recived_till_now: {
-        type: Sequelize.DataTypes.STRING(100),
-        allowNull: true
+        type: Sequelize.DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: 0
     },
     createdAt: {
         type: Sequelize.DataTypes.DATE,

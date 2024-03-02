@@ -5,6 +5,7 @@ const ReceiptsModel = global.DATA.CONNECTION.mysql.define("receipts", {
         type: Sequelize.DataTypes.INTEGER,
         primaryKey: true,
         allowNull: false,
+        autoIncrement: true
     },
     client_name: {
         type: Sequelize.DataTypes.STRING(100),
@@ -19,11 +20,15 @@ const ReceiptsModel = global.DATA.CONNECTION.mysql.define("receipts", {
         allowNull: false
     },
     project_id: {
-        type: Sequelize.DataTypes.STRING(100),
+        type: Sequelize.DataTypes.INTEGER,
+        allowNull: false,
+    },
+    pd_id: {
+        type: Sequelize.DataTypes.INTEGER,
         allowNull: false,
     },
     commission_holder_id: {
-        type: Sequelize.DataTypes.STRING(100),
+        type: Sequelize.DataTypes.INTEGER,
         allowNull: false,
     },
     receipt_status: {
@@ -32,12 +37,16 @@ const ReceiptsModel = global.DATA.CONNECTION.mysql.define("receipts", {
         defaultValue: 'NV'
     },
     commission_id: {
+        type: Sequelize.DataTypes.INTEGER,
+        allowNull: false,
+    },
+    date_of_onboard: {
         type: Sequelize.DataTypes.STRING(100),
-        allowNull: false
+        allowNull: true
     },
     date_of_validation: {
         type: Sequelize.DataTypes.STRING(100),
-        allowNull: false
+        allowNull: true
     },
     createdAt: {
         type: Sequelize.DataTypes.DATE,

@@ -28,7 +28,6 @@ class MySqlModels {
                             if (model && model.name) {
                                 console.log('Model loaded:', model.name);
                                 this.models[model.name] = model;
-                                // await this.models[modelName].sync();
                             } else {
                                 console.log(`File ${file} does not export a valid model.`);
                             }
@@ -38,9 +37,9 @@ class MySqlModels {
             }
 
             console.log("Loaded models:", Object.keys(this.models));
-            if (this.models['receipts'] && this.models['PropertyDetails'] && this.models['commissions'] && this.models['ApartmentProjects'] && this.models['VillaProjects'] && this.models['PoltProjects'] && this.models['FarmLandProjects'] && this.models['TokenOrAdvanceHistories'] && this.models['BlockedProjects']) {
-                await this.defineRelationships();
+            if (this.models['receipts'] && this.models['PropertyDetails'] && this.models['commissions'] && this.models['projects'] && this.models['TokenOrAdvanceHistories'] && this.models['BlockedProjects']) {
                 await this.syncModels();
+                await this.defineRelationships();
             } else {
                 console.error("Required models not loaded. Cannot define relationships.");
             }
@@ -59,17 +58,16 @@ class MySqlModels {
                 throw new Error("Models not found");
             }
 
-            PropertyDetails.belongsTo(receipts, { foreignKey: 'project_id' });
-            projects.belongsTo(receipts, { foreignKey: 'project_id' });
-            // projects.belongsTo(PropertyDetails, { foreignKey: 'project_id' });
-            TokenOrAdvanceHistories.belongsTo(PropertyDetails, { foreignKey: 'ta_history_id' });
-            BlockedProjects.belongsTo(PropertyDetails, { foreignKey: 'blocked_id' });
-            users.belongsTo(receipts, { foreignKey: 'commission_holder_id' });
-            commissions.belongsTo(receipts, { foreignKey: 'commission_id' });
+            receipts.belongsTo(PropertyDetails, { foreignKey: 'pd_id' });
+            receipts.belongsTo(projects, { foreignKey: 'project_id' });
+            PropertyDetails.belongsTo(TokenOrAdvanceHistories, { foreignKey: 'ta_history_id' });
+            PropertyDetails.belongsTo(BlockedProjects, { foreignKey: 'blocked_id' });
+            receipts.belongsTo(users, { foreignKey: 'commission_holder_id' });
+            receipts.belongsTo(commissions, { foreignKey: 'commission_id' });
 
             console.log("Relationships defined successfully");
         } catch (error) {
-            console.error("Error defining relationships:", error);
+            console.error("Error defining relationships:", error.message);
         }
     }
 

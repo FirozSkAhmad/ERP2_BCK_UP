@@ -32,7 +32,10 @@ class BulkUpload {
 
     async bulkInsert(Model, data, type) {
         try {
-            await this.dbConnection.transaction(async (t) => {
+            // Validate required fields based on type
+            this.validateRequiredFields(data, type);
+
+            await global.DATA.CONNECTION.mysql.transaction(async (t) => {
                 const preparedData = data.map(item => ({
                     project_type: type,
                     project_name: item['Project Name'],
@@ -53,16 +56,34 @@ class BulkUpload {
         }
     }
 
+    validateRequiredFields(data, type) {
+        const requiredFields = {
+            APARTMENT: ['Project Name', 'Tower Number', 'Flat Number'],
+            VILLA: ['Project Name', 'Villa Number'],
+            PLOT: ['Project Name', 'Plot Number'],
+            FARM_LAND: ['Project Name', 'Plot Number', 'Sq.yards'],
+        };
+
+        const missingFields = data.some(item => {
+            const fields = requiredFields[type];
+            return fields.some(field => !item[field]);
+        });
+
+        if (missingFields) {
+            throw new Error(`Missing required fields for type ${type}`);
+        }
+    }
+
     generatePayloadIdentifier(item, type) {
         switch (type) {
             case 'APARTMENT':
-                return `${item['Project type']}_${item['Project Name']}_${item['Tower Number']}_${item['Flat Number']}`;
+                return `${type}_${item['Project Name']}_${item['Tower Number']}_${item['Flat Number']}`;
             case 'VILLA':
-                return `${item['Project type']}_${item['Project Name']}_${item['Villa Number']}`;
+                return `${type}_${item['Project Name']}_${item['Villa Number']}`;
             case 'PLOT':
-                return `${item['Project type']}_${item['Project Name']}_${item['Plot Number']}`;
+                return `${type}_${item['Project Name']}_${item['Plot Number']}`;
             case 'FARM_LAND':
-                return `${item['Project type']}_${item['Project Name']}_${item['Plot Number']}_${item['Sq.yards']}`;
+                return `${type}_${item['Project Name']}_${item['Plot Number']}_${item['Sq.yards']}`;
             default:
                 return ''; // Consider a more robust handling or default case
         }

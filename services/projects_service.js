@@ -2,10 +2,6 @@
 const { SQL_ERROR, PROJECT_CREATION_ERROR } = require('../utils/Constants/response_messages')
 const { Sequelize } = require('sequelize')
 const ProjectsModel = require('../utils/Models/Projects/ProjectsModel');
-// const ApartmentsModel = require('../utils/Models/ApartmentProjects/ApartmentProjectsModel');
-// const VillasModel = require('../utils/Models/VillaProjects/VillaProjectsModel');
-// const PlotsModel = require('../utils/Models/PlotProjects/PlotProjectsModel');
-// const FarmLandsModel = require('../utils/Models/FarmLandProjects/FarmLandProjectsModel');
 
 class ProjectsService {
     constructor() {
@@ -14,56 +10,67 @@ class ProjectsService {
 
     async createNewProject(payload) {
         try {
-            // const models = {
-            //     'APARTMENT': ApartmentsModel,
-            //     'VILLA': VillasModel,
-            //     'PLOT': PlotsModel,
-            //     'FARM_LAND': FarmLandsModel,
-            // };
-
-            // const projectTypeModel = models[payload.project_type];
-            // if (!projectTypeModel) {
-            //     throw createError.BadRequest("Provide Correct Project Type");
-            // }
-
-            let payloadIdentifierCheck = payload.project_type + '_' + payload.project_name;
-            if (payload.project_type === 'APARTMENT') {
-                payloadIdentifierCheck += '_' + payload.tower_number + '_' + payload.flat_number;
-            } else if (payload.project_type === 'VILLA') {
-                payloadIdentifierCheck += '_' + payload.villa_number;
-            } else if (payload.project_type === 'PLOT') {
-                payloadIdentifierCheck += '_' + payload.plot_number;
-            } else if (payload.project_type === 'FARM_LAND') {
-                payloadIdentifierCheck += '_' + payload.plot_number + '_' + payload.sq_yards;
+            // Check if project_type is provided and valid
+            if (!payload.project_type || !['APARTMENT', 'VILLA', 'PLOT', 'FARM_LAND'].includes(payload.project_type.toUpperCase())) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid or missing project_type.");
             }
 
-            let data = await ProjectsModel.findOne({
-                where: {
-                    pid: payloadIdentifierCheck
-                }
-            });
+            // Validate required fields based on project_type
+            this.validateRequiredFields(payload);
 
-            if (data) {
+            // Construct payload identifier based on project type
+            let payloadIdentifierCheck = this.constructPayloadIdentifier(payload);
+
+            // Check if a project with the same identifier already exists
+            const existingProject = await ProjectsModel.findOne({ where: { pid: payloadIdentifierCheck } });
+            if (existingProject) {
                 throw new global.DATA.PLUGINS.httperrors.Conflict("Project already created with the given details");
             }
 
-            let toBeCreatedProject = { ...payload, pid: payloadIdentifierCheck };
-            console.log('toBeCreatedProject:', toBeCreatedProject);
-
-            const newlyCreatedProject = await ProjectsModel.create(toBeCreatedProject);
-            return newlyCreatedProject;
+            // Create the new project
+            const newlyCreatedProject = await ProjectsModel.create({ ...payload, pid: payloadIdentifierCheck });
+            return "Successfully created project.";
 
         } catch (err) {
             console.error("Error in createNewProject: ", err.message);
-
-            // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
             }
-            // Log and throw a generic server error for unknown errors
             throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
+
+    validateRequiredFields(payload) {
+        const requiredFields = {
+            APARTMENT: ['project_name', 'tower_number', 'flat_number'],
+            VILLA: ['project_name', 'villa_number'],
+            PLOT: ['project_name', 'plot_number'],
+            FARM_LAND: ['project_name', 'plot_number', 'sq_yards'],
+        };
+
+        const fields = requiredFields[payload.project_type.toUpperCase()];
+        const missingFields = fields.filter(field => !payload[field]);
+
+        if (missingFields.length > 0) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields: ${missingFields.join(', ')}`);
+        }
+    }
+
+    constructPayloadIdentifier(payload) {
+        const baseIdentifier = `${payload.project_type.toUpperCase()}_${payload.project_name}`;
+        switch (payload.project_type.toUpperCase()) {
+            case 'APARTMENT':
+                return `${baseIdentifier}_${payload.tower_number}_${payload.flat_number}`;
+            case 'VILLA':
+                return `${baseIdentifier}_${payload.villa_number}`;
+            case 'PLOT':
+            case 'FARM_LAND':
+                return `${baseIdentifier}_${payload.plot_number}` + (payload.project_type.toUpperCase() === 'FARM_LAND' ? `_${payload.sq_yards}` : '');
+            default:
+                return baseIdentifier; // Fallback, should not reach here due to initial validation
+        }
+    }
+
 
     async editProject(payload) {
         try {
@@ -283,449 +290,249 @@ class ProjectsService {
         }
     }
 
-    async getAvailableProjectNames() {
+    async getAvailableFilteredProjectNames(project_type) {
         try {
-            const response = await DATA.CONNECTION.mysql.query(`select project_name from projects where status='AVAILABLE'`, {
-                type: Sequelize.QueryTypes.SELECT
-            }).catch(err => {
-                console.log("Error while fetching data", err.message);
-                throw createError.InternalServerError(SQL_ERROR);
-            })
-
-            const data = (response);
-            console.log("View All Projects", data);
-            let uniqueProjectNames = new Set();
-
-            // Filter the data array to get only unique project_name values
-            let uniqueProjectNameData = data.filter(item => {
-                if (!uniqueProjectNames.has(item.project_name.split('').join(''))) {
-                    uniqueProjectNames.add(item.project_name.split('').join(''));
-                    return true;
-                }
-                return false;
+            const response = await ProjectsModel.findAll({
+                where: {
+                    project_type,
+                    status: 'AVAILABLE'
+                },
+                attributes: ['project_name']
             });
 
-            console.log(uniqueProjectNameData);
-            return uniqueProjectNameData;
+            // Map the response to get project names
+            const projectNames = response.map(item => item.project_name);
+
+            // Use a Set to filter out unique names and then convert it back to an array
+            const uniqueProjectNames = [...new Set(projectNames)];
+
+            return uniqueProjectNames;
         }
         catch (err) {
-            throw err;
+            console.error("Error in getAvailableFilteredProjectNames: ", err.message);
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
-    async getFilteredProjectTypes(payload) {
+    async getFilteredTowerNumbers(project_name) {
         try {
-            const response = await DATA.CONNECTION.mysql.query(`select project_type from projects where project_name='${payload.project_name}'`, {
-                type: Sequelize.QueryTypes.SELECT
-            }).catch(err => {
-                console.log("Error while fetching data", err.message);
-                throw createError.InternalServerError(SQL_ERROR);
+            const response = await ProjectsModel.findAll({
+                where: {
+                    project_type: "APARTMENT",
+                    project_name,
+                    status: 'AVAILABLE'
+                },
+                attributes: ['tower_number']
             })
 
-            const data = (response);
-            console.log("View FIltered Project Types", data);
-            let uniqueProjectTypes = new Set();
+            // Map the response to get project names
+            const towerNumbers = response.map(item => item.tower_number);
 
-            // Filter the data array to get only unique project_name values
-            let uniqueProjectTypeData = data.filter(item => {
-                if (!uniqueProjectTypes.has((item.project_type).split('').join(''))) {
-                    uniqueProjectTypes.add((item.project_type).split('').join(''));
-                    return true;
-                }
-                return false;
-            });
+            // Use a Set to filter out unique names and then convert it back to an array
+            const uniqueTowerNumbers = [...new Set(towerNumbers)];
 
-            console.log(uniqueProjectTypeData);
-            return uniqueProjectTypeData;
+            return uniqueTowerNumbers;
         }
         catch (err) {
-            throw err;
+            console.error("Error in getFilteredTowerNumbers: ", err.message);
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
-    async getFilteredProjectTowerNumbers(payload) {
+    async getFilteredFlatNumbers(project_name, tower_number) {
         try {
-            if (payload.project_type !== 'Apartment') {
-                throw createError.BadGateway("Tower Numbers will be for Apartment Project Types")
-            }
-            const response = await DATA.CONNECTION.mysql.query(`select tower_number from projects where project_name='${payload.project_name}' and project_type='${payload.project_type}'`, {
-                type: Sequelize.QueryTypes.SELECT
-            }).catch(err => {
-                console.log("Error while fetching data", err.message);
-                throw createError.InternalServerError(SQL_ERROR);
+            const response = await ProjectsModel.findAll({
+                where: {
+                    project_type: "APARTMENT",
+                    project_name,
+                    tower_number,
+                    status: 'AVAILABLE'
+                },
+                attributes: ['flat_number']
             })
 
-            const data = (response);
-            console.log("View FIltered Project Tower Numbers", data);
-            let uniqueProjectTowerNumbers = new Set();
+            const flatNumbers = response.map(item => item.flat_number);
 
-            // Filter the data array to get only unique project_name values
-            let uniqueProjectTowerData = data.filter(item => {
-                if (!uniqueProjectTowerNumbers.has((item.tower_number).split('').join(''))) {
-                    uniqueProjectTowerNumbers.add((item.tower_number).split('').join(''));
-                    return true;
-                }
-                return false;
-            });
+            const uniqueFlatNumbers = [...new Set(flatNumbers)];
 
-            console.log(uniqueProjectTowerData);
-            return uniqueProjectTowerData;
+            return uniqueFlatNumbers;
         }
         catch (err) {
-            throw err;
+            console.error("Error in getFilteredFlatNumbers: ", err.message);
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
-    async getFilteredProjectFlatNumbers(payload) {
+    async getFilteredVillaNumbers(project_name) {
         try {
-            if (payload.project_type !== 'Apartment') {
-                throw createError.BadGateway("Tower and Flat Numbers will be for Apartment Project Types")
-            }
-            const response = await DATA.CONNECTION.mysql.query(`select flat_number from projects where project_name='${payload.project_name}' and project_type='${payload.project_type}' and tower_number='${payload.tower_number}'`, {
-                type: Sequelize.QueryTypes.SELECT
-            }).catch(err => {
-                console.log("Error while fetching data", err.message);
-                throw createError.InternalServerError(SQL_ERROR);
+            const response = await ProjectsModel.findAll({
+                where: {
+                    project_type: "VILLA",
+                    project_name,
+                    status: 'AVAILABLE'
+                },
+                attributes: ['villa_number']
             })
 
-            const data = (response);
-            console.log("View FIltered Project Flat Numbers", data);
-            let uniqueProjectFlatNumbers = new Set();
+            // Map the response to get project names
+            const villaNumbers = response.map(item => item.tower_number);
 
-            // Filter the data array to get only unique project_name values
-            let uniqueProjectFlatsData = data.filter(item => {
-                if (!uniqueProjectFlatNumbers.has((item.flat_number).split('').join(''))) {
-                    uniqueProjectFlatNumbers.add((item.flat_number).split('').join(''));
-                    return true;
-                }
-                return false;
-            });
+            // Use a Set to filter out unique names and then convert it back to an array
+            const uniqueVillaNumbers = [...new Set(villaNumbers)];
 
-            console.log(uniqueProjectFlatsData);
-            return uniqueProjectFlatsData;
+            return uniqueVillaNumbers;
         }
         catch (err) {
-            throw err;
+            console.error("Error in getFilteredVillaNumbers: ", err.message);
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
-    async getFilteredProjectVillaNumbers(payload) {
+    async getFilteredPlotNumbers(project_name) {
         try {
-            if (payload.project_type !== 'Villa') {
-                throw createError.BadGateway("Villa Numbers will be for Villa Project Types")
-            }
-            const response = await DATA.CONNECTION.mysql.query(`select villa_number from projects where project_name='${payload.project_name}' and project_type='${payload.project_type}'`, {
-                type: Sequelize.QueryTypes.SELECT
-            }).catch(err => {
-                console.log("Error while fetching data", err.message);
-                throw createError.InternalServerError(SQL_ERROR);
+            const response = await ProjectsModel.findAll({
+                where: {
+                    project_type: "PLOT",
+                    project_name,
+                    status: 'AVAILABLE'
+                },
+                attributes: ['plot_number']
             })
 
-            const data = (response);
-            console.log("View FIltered Project villa Numbers", data);
-            let uniqueProjectVillaNumbers = new Set();
+            // Map the response to get project names
+            const plotNumbers = response.map(item => item.tower_number);
 
-            // Filter the data array to get only unique project_name values
-            let uniqueProjectVillaData = data.filter(item => {
-                if (!uniqueProjectVillaNumbers.has((item.villa_number).split('').join(''))) {
-                    uniqueProjectVillaNumbers.add((item.villa_number).split('').join(''));
-                    return true;
-                }
-                return false;
-            });
+            // Use a Set to filter out unique names and then convert it back to an array
+            const uniquePlotNumbers = [...new Set(plotNumbers)];
 
-            console.log(uniqueProjectVillaData);
-            return uniqueProjectVillaData;
+            return uniquePlotNumbers;
         }
         catch (err) {
-            throw err;
+            console.error("Error in getFilteredPlotNumbers: ", err.message);
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
-    async getFilteredProjectPlotNumbers(payload) {
+    async getFilteredPlotNumbersOfFLs(project_name) {
         try {
-            if (payload.project_type !== 'Plot') {
-                throw createError.BadGateway("Plot Numbers will be for Plot Project Types")
-            }
-            const response = await DATA.CONNECTION.mysql.query(`select plot_number from projects where project_name='${payload.project_name}' and project_type='${payload.project_type}'`, {
-                type: Sequelize.QueryTypes.SELECT
-            }).catch(err => {
-                console.log("Error while fetching data", err.message);
-                throw createError.InternalServerError(SQL_ERROR);
+            const response = await ProjectsModel.findAll({
+                where: {
+                    project_type: "FARM_LAND",
+                    project_name,
+                    status: 'AVAILABLE'
+                },
+                attributes: ['plot_number']
             })
 
-            const data = (response);
-            console.log("View FIltered Project Plot Numbers", data);
-            let uniqueProjectPlotNumbers = new Set();
+            // Map the response to get project names
+            const plotNumbers = response.map(item => item.tower_number);
 
-            // Filter the data array to get only unique project_name values
-            let uniqueProjectPlotsData = data.filter(item => {
-                if (!uniqueProjectPlotNumbers.has((item.plot_number).split('').join(''))) {
-                    uniqueProjectPlotNumbers.add((item.plot_number).split('').join(''));
-                    return true;
-                }
-                return false;
-            });
+            // Use a Set to filter out unique names and then convert it back to an array
+            const uniquePlotNumbers = [...new Set(plotNumbers)];
 
-            console.log(uniqueProjectPlotsData);
-            return uniqueProjectPlotsData;
+            return uniquePlotNumbers;
         }
         catch (err) {
-            throw err;
+            console.error("Error in getFilteredPlotNumbersOfFLs: ", err.message);
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
-    //available apis
-    async getAvailableFilteredProjectTypes(payload) {
+    async getSqYards(project_name, plot_number) {
         try {
-            let que = `select project_type from projects where project_name='${payload.project_name}' and status='AVAILABLE'`;
-            console.log('available project type query check:', que);
-            const response = await DATA.CONNECTION.mysql.query(`select project_type from projects where project_name='${payload.project_name}' and status='AVAILABLE'`, {
-                type: Sequelize.QueryTypes.SELECT
-            }).catch(err => {
-                console.log("Error while fetching data", err.message);
-                throw createError.InternalServerError(SQL_ERROR);
+            const SqYards = await ProjectsModel.findOne({
+                where: {
+                    project_type: "FARM_LAND",
+                    project_name,
+                    plot_number,
+                    status: 'AVAILABLE'
+                },
+                attributes: ['sq_yards']
             })
 
-            const data = (response);
-            console.log("View FIltered Project Types", data);
-            let uniqueProjectTypes = new Set();
-
-            // Filter the data array to get only unique project_name values
-            let uniqueProjectTypeData = data.filter(item => {
-                if (!uniqueProjectTypes.has((item.project_type).split('').join(''))) {
-                    uniqueProjectTypes.add((item.project_type).split('').join(''));
-                    return true;
-                }
-                return false;
-            });
-
-            console.log(uniqueProjectTypeData);
-            return uniqueProjectTypeData;
+            return SqYards.sq_yards;
         }
         catch (err) {
-            throw err;
-        }
-    }
-
-    async getAvailableFilteredProjectTowerNumbers(payload) {
-        try {
-            if (payload.project_type !== 'Apartment') {
-                throw createError.BadGateway("Tower Numbers will be for Apartment Project Types")
+            console.error("Error in getFilteredPlotNumbersOfFLs: ", err.message);
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
             }
-            const response = await DATA.CONNECTION.mysql.query(`select tower_number from projects where project_name='${payload.project_name}' and project_type='${payload.project_type}' and status='AVAILABLE'`, {
-                type: Sequelize.QueryTypes.SELECT
-            }).catch(err => {
-                console.log("Error while fetching data", err.message);
-                throw createError.InternalServerError(SQL_ERROR);
-            })
-
-            const data = (response);
-            console.log("View FIltered Project Tower Numbers", data);
-            let uniqueProjectTowerNumbers = new Set();
-
-            // Filter the data array to get only unique project_name values
-            let uniqueProjectTowerData = data.filter(item => {
-                if (!uniqueProjectTowerNumbers.has((item.tower_number).split('').join(''))) {
-                    uniqueProjectTowerNumbers.add((item.tower_number).split('').join(''));
-                    return true;
-                }
-                return false;
-            });
-
-            console.log(uniqueProjectTowerData);
-            return uniqueProjectTowerData;
-        }
-        catch (err) {
-            throw err;
-        }
-    }
-
-    async getAvailableFilteredProjectFlatNumbers(payload) {
-        try {
-            if (payload.project_type !== 'Apartment') {
-                throw createError.BadGateway("Tower and Flat Numbers will be for Apartment Project Types")
-            }
-            const response = await DATA.CONNECTION.mysql.query(`select flat_number from projects where project_name='${payload.project_name}' and project_type='${payload.project_type}' and tower_number='${payload.tower_number}' and status='AVAILABLE'`, {
-                type: Sequelize.QueryTypes.SELECT
-            }).catch(err => {
-                console.log("Error while fetching data", err.message);
-                throw createError.InternalServerError(SQL_ERROR);
-            })
-
-            const data = (response);
-            console.log("View FIltered Project Flat Numbers", data);
-            let uniqueProjectFlatNumbers = new Set();
-
-            // Filter the data array to get only unique project_name values
-            let uniqueProjectFlatsData = data.filter(item => {
-                if (!uniqueProjectFlatNumbers.has((item.flat_number).split('').join(''))) {
-                    uniqueProjectFlatNumbers.add((item.flat_number).split('').join(''));
-                    return true;
-                }
-                return false;
-            });
-
-            console.log(uniqueProjectFlatsData);
-            return uniqueProjectFlatsData;
-        }
-        catch (err) {
-            throw err;
-        }
-    }
-
-    async getAvailableFilteredProjectVillaNumbers(payload) {
-        try {
-            if (payload.project_type !== 'Villa') {
-                throw createError.BadGateway("Villa Numbers will be for Villa Project Types")
-            }
-            const response = await DATA.CONNECTION.mysql.query(`select villa_number from projects where project_name='${payload.project_name}' and project_type='${payload.project_type}' and status='AVAILABLE'`, {
-                type: Sequelize.QueryTypes.SELECT
-            }).catch(err => {
-                console.log("Error while fetching data", err.message);
-                throw createError.InternalServerError(SQL_ERROR);
-            })
-
-            const data = (response);
-            console.log("View FIltered Project villa Numbers", data);
-            let uniqueProjectVillaNumbers = new Set();
-
-            // Filter the data array to get only unique project_name values
-            let uniqueProjectVillaData = data.filter(item => {
-                if (!uniqueProjectVillaNumbers.has((item.villa_number).split('').join(''))) {
-                    uniqueProjectVillaNumbers.add((item.villa_number).split('').join(''));
-                    return true;
-                }
-                return false;
-            });
-
-            console.log(uniqueProjectVillaData);
-            return uniqueProjectVillaData;
-        }
-        catch (err) {
-            throw err;
-        }
-    }
-
-    async getAvailableFilteredProjectPlotNumbers(payload) {
-        try {
-            if (payload.project_type !== 'Plot') {
-                throw createError.BadGateway("Plot Numbers will be for Plot Project Types")
-            }
-            const response = await DATA.CONNECTION.mysql.query(`select plot_number from projects where project_name='${payload.project_name}' and project_type='${payload.project_type}' and status='AVAILABLE'`, {
-                type: Sequelize.QueryTypes.SELECT
-            }).catch(err => {
-                console.log("Error while fetching data", err.message);
-                throw createError.InternalServerError(SQL_ERROR);
-            })
-
-            const data = (response);
-            console.log("View FIltered Project Plot Numbers", data);
-            let uniqueProjectPlotNumbers = new Set();
-
-            // Filter the data array to get only unique project_name values
-            let uniqueProjectPlotsData = data.filter(item => {
-                if (!uniqueProjectPlotNumbers.has((item.plot_number).split('').join(''))) {
-                    uniqueProjectPlotNumbers.add((item.plot_number).split('').join(''));
-                    return true;
-                }
-                return false;
-            });
-
-            console.log(uniqueProjectPlotsData);
-            return uniqueProjectPlotsData;
-        }
-        catch (err) {
-            throw err;
-        }
-    }
-
-    async getFilteredProjectStatus(payload) {
-        try {
-            let query = '';
-            console.log('project_type:', payload.project_type);
-            if (payload.project_type === 'Apartment') {
-                query = `select status from projects where project_name='${payload.project_name}' and project_type='${payload.project_type}' and tower_number='${payload.tower_number}' and flat_number='${payload.flat_number}'`
-            }
-            else if (payload.project_type === 'Villa') {
-                query = `select status from projects where project_name='${payload.project_name}' and project_type='${payload.project_type}' and villa_number='${payload.villa_number}'`
-            }
-            else if (payload.project_type === 'Plot') {
-                query = `select status from projects where project_name='${payload.project_name}' and project_type='${payload.project_type}' and plot_number='${payload.plot_number}'`
-            }
-            else {
-                throw new global.DATA.PLUGINS.httperrors.BadGateway("Provide Correct Project Type")
-            }
-            console.log(query);
-            const response = await DATA.CONNECTION.mysql.query(query, {
-                type: Sequelize.QueryTypes.SELECT
-            }).catch(err => {
-                console.log("Error while fetching data", err.message);
-                throw new global.DATA.PLUGINS.httperrors.InternalServerError(SQL_ERROR);
-            })
-
-            const data = (response);
-            console.log("View FIltered Project Status", data);
-
-            return data;
-        }
-        catch (err) {
-            throw err;
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
     async getProjectsData(projectType) {
-        // const models = {
-        //     "APARTMENT": ApartmentsModel,
-        //     "VILLA": VillasModel,
-        //     "PLOT": PlotsModel,
-        //     "FARM_LAND": FarmLandsModel,
-        // };
-
-        // const model = models[projectType.toUpperCase()];
-
-        // if (!model) {
-        //     throw new Error('Invalid project type'); // Or use createError.BadRequest if you have http-errors
-        // }
-
         try {
+            // Define exclusion rules based on project type
+            const excludeFields = {
+                APARTMENT: ['villa_number', 'plot_number', 'sq_yards'],
+                VILLA: ['tower_number', 'flat_number', 'plot_number', 'sq_yards'],
+                PLOT: ['tower_number', 'flat_number', 'villa_number', 'sq_yards'],
+                FARM_LAND: ['tower_number', 'flat_number', 'villa_number']
+            };
+
+            // Get the list of fields to exclude for the given project type
+            const fieldsToExclude = excludeFields[projectType.toUpperCase()] || [];
+
             const response = await ProjectsModel.findAll({
                 where: {
                     project_type: projectType
+                },
+                attributes: {
+                    exclude: fieldsToExclude
                 }
             });
-            return response; // Directly return the response, no need for extra variable
+            return response;
         } catch (err) {
             console.error("Error in getProjectsData: ", err.message);
 
-            // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
             }
-            // Log and throw a generic server error for unknown errors
+
             throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
+
     async getAvailableProjectsData(projectType) {
-        // const models = {
-        //     "APARTMENT": ApartmentsModel,
-        //     "VILLA": VillasModel,
-        //     "PLOT": PlotsModel,
-        //     "FARM_LAND": FarmLandsModel,
-        // };
-
-        // const model = models[projectType.toUpperCase()];
-
-        // if (!model) {
-        //     throw new Error('Invalid project type'); // Or use createError.BadRequest if you have http-errors
-        // }
-
         try {
+            // Define exclusion rules based on project type
+            const excludeFields = {
+                APARTMENT: ['villa_number', 'plot_number', 'sq_yards'],
+                VILLA: ['tower_number', 'flat_number', 'plot_number', 'sq_yards'],
+                PLOT: ['tower_number', 'flat_number', 'villa_number', 'sq_yards'],
+                FARM_LAND: ['tower_number', 'flat_number', 'villa_number']
+            };
+
+            // Get the list of fields to exclude for the given project type
+            const fieldsToExclude = excludeFields[projectType.toUpperCase()] || [];
+
             const response = await ProjectsModel.findAll({
                 where: {
                     project_type: projectType,
                     status: 'AVAILABLE' // This line filters the results to only include available projects
+                },
+                attributes: {
+                    exclude: fieldsToExclude
                 }
             });
             return response; // Directly return the response, no need for extra variable
@@ -741,21 +548,8 @@ class ProjectsService {
         }
     }
 
-
-
     async getStatusCount(projectType) {
         try {
-            // const models = {
-            //     "APARTMENT": ApartmentsModel,
-            //     "VILLA": VillasModel,
-            //     "PLOT": PlotsModel,
-            //     "FARM_LAND": FarmLandsModel,
-            // };
-
-            // const model = models[projectType.toUpperCase()];
-            // if (!model) {
-            //     throw new Error('Invalid project type');
-            // }
 
             const statuses = ['AVAILABLE', 'TOKEN', 'ADVANCE', 'PART-PAYMENT', 'BLOCK', 'SOLD'];
             const counts = await Promise.all(statuses.map(async (status) => {
@@ -776,7 +570,7 @@ class ProjectsService {
 
             return response;
         } catch (err) {
-            console.error("Error in createNewProject: ", err.message);
+            console.error("Error in getStatusCount: ", err.message);
 
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {

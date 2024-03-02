@@ -1,50 +1,51 @@
 const Sequelize = require('sequelize')
 
 const PropertyDetailsModel = global.DATA.CONNECTION.mysql.define("PropertyDetails", {
-    project_id: {
+    pd_id: {
         type: Sequelize.DataTypes.INTEGER,
         primaryKey: true,
         allowNull: false,
-        autoIncrement: true
+        unique: true
     },
     property_price: {
-        type: Sequelize.DataTypes.STRING(100),
-        allowNull: true
+        type: Sequelize.DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null
     },
     discount_percent: {
         type: Sequelize.DataTypes.INTEGER,
         allowNull: true
     },
     ta_history_id: {
-        type: Sequelize.DataTypes.STRING(100),
-        allowNull: true
+        type: Sequelize.DataTypes.INTEGER,
+        allowNull: true,
     },
     blocked_id: {
-        type: Sequelize.DataTypes.STRING(100),
-        allowNull: true
+        type: Sequelize.DataTypes.INTEGER,
+        allowNull: true,
     },
     amount_paid_till_now: {
-        type: Sequelize.DataTypes.STRING(100),
+        type: Sequelize.DataTypes.INTEGER,
         allowNull: true
     },
     pending_payment: {
-        type: Sequelize.DataTypes.STRING(100),
+        type: Sequelize.DataTypes.INTEGER,
         allowNull: true
     },
     no_of_part_payments: {
         type: Sequelize.DataTypes.INTEGER,
         allowNull: false,
-        default: 0
+        defaultValue: 0
     },
     semi_deleted: {
-        type: Sequelize.DataTypes.STRING(100),
+        type: Sequelize.DataTypes.BOOLEAN,
         allowNull: false,
-        default: 'false'
+        defaultValue: false
     },
     completely_deleted: {
-        type: Sequelize.DataTypes.STRING(100),
+        type: Sequelize.DataTypes.BOOLEAN,
         allowNull: false,
-        default: 'false'
+        defaultValue: false
     },
     date_of_deletion: {
         type: Sequelize.DataTypes.STRING(100),

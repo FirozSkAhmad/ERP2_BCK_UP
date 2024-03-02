@@ -1,42 +1,41 @@
-const express = require('express')
-const router = express.Router()
-const Constants = require('../utils/Constants/response_messages')
-const JwtHelper = require('../utils/Helpers/jwt_helper')
+const express = require('express');
+const router = express.Router();
+const JwtHelper = require('../utils/Helpers/jwt_helper');
 const jwtHelperObj = new JwtHelper();
-const BulkUploadService = require('../services/bulkupload_service')
+const BulkUploadService = require('../services/bulkupload_service');
 const multer = require('multer');
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+// Function to verify if the uploaded file is a CSV
+function isCsvFile(file) {
+    const fileExtension = file.originalname.split('.').pop().toLowerCase();
+    const mimeType = file.mimetype;
+    return fileExtension === 'csv' && mimeType === 'text/csv';
+}
+
 router.post("/bulkUpload", jwtHelperObj.verifyAccessToken, upload.single('file'), async (req, res, next) => {
     try {
-        if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
-            try {
-                if (!req.file || !isCsvFile(req.file)) {
-                    return res.status(400).send({ "status": 400, "message": "Invalid file format. Please upload a CSV file." });
-                }
-
-                const { project_type } = req.body
-
-                const bulkUploadServiceObj = new BulkUploadService();
-                const result = await bulkUploadServiceObj.processCsvFile(req.file.buffer, project_type);
-                res.send(result)
+        const userRole = req.aud.split(":")[1];
+        if (["SUPER ADMIN", "MANAGER"].includes(userRole)) {
+            if (!req.file || !isCsvFile(req.file)) {
+                return res.status(400).json({ "status": 400, "message": "Invalid file format. Please upload a CSV file." });
             }
-            catch (err) {
-                next(err);
-            }
-        }
-        else {
-            res.send({
+
+            const { project_type } = req.body;
+            const bulkUploadServiceObj = new BulkUploadService();
+            const result = await bulkUploadServiceObj.processCsvFile(req.file.buffer, project_type.toUpperCase());
+            res.json(result);
+        } else {
+            res.status(401).json({
                 "status": 401,
-                "message": "only Super Admin AND Manager has access to upload the data",
-            })
+                "message": "Only Super Admin and Manager have access to upload the data.",
+            });
         }
-    }
-    catch (err) {
-        console.log("error while uploading the projects", err);
+    } catch (err) {
+        console.error("Error while uploading the projects:", err.message);
         next(err);
     }
-})
+});
 
 module.exports = router;

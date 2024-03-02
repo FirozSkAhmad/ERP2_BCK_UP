@@ -8,11 +8,11 @@ const TokenOrAdvanceHistoryModel = global.DATA.CONNECTION.mysql.define("TokenOrA
         autoIncrement: true
     },
     ta_mode_of_payment: {
-        type: Sequelize.DataTypes.STRING(100),
+        type: Sequelize.ENUM('CASH', 'UPI', 'BANK TRANSFER'),
         allowNull: false
     },
     ta_amount: {
-        type: Sequelize.DataTypes.STRING(100),
+        type: Sequelize.DataTypes.INTEGER,
         allowNull: false
     },
     data_of_ta_payment: {

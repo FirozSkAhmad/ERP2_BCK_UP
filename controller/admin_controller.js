@@ -6,10 +6,10 @@ const jwtHelperObj = new JwtHelper();
 const router = express.Router()
 
 
-router.post('/createSuperAdmin', multer().any(), async (req, res, next) => {
+router.post('/createSuperAdmin', async (req, res, next) => {
     try {
         const adminServiceObj = new AdminService();
-        await adminServiceObj.createSuperAdmin(req.body, req.files);
+        await adminServiceObj.createSuperAdmin(req.body);
         res.send({
             "status": 200,
             "message": Constants.SUCCESS,
@@ -19,11 +19,13 @@ router.post('/createSuperAdmin', multer().any(), async (req, res, next) => {
     }
 });
 
-router.get('/getPendingUsersList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.get('/getUsersList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
+
+            const { status_filter } = req.query
             const adminServiceObj = new AdminService();
-            const data = await adminServiceObj.getPendingUsersList();
+            const data = await adminServiceObj.getUsersList(status_filter);
 
             res.send({
                 "status": 200,
@@ -44,69 +46,20 @@ router.get('/getPendingUsersList', jwtHelperObj.verifyAccessToken, async (req, r
     }
 })
 
-router.post('/validateUser', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.put('/validateUser', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN") {
             const adminServiceObj = new AdminService()
-            const res = await adminServiceObj.validateUser(req.body)
+            const message = await adminServiceObj.validateUser(req.body)
             res.send({
                 "status": 200,
-                "message": res.message,
-
+                "message": message,
             })
         }
         else {
             res.send({
                 "status": 401,
                 "message": "only Super Admin has access to validateUser",
-            })
-        }
-    }
-    catch (err) {
-        next(err);
-    }
-})
-
-router.get('/getApprovedUsersList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
-    try {
-        const role = req.aud.split(":")[1];
-        if (role === "SUPER ADMIN" || role === "MANAGER") {
-            const adminServiceObj = new AdminService()
-            const data = await adminServiceObj.approvedUsersList(req.body)
-            res.send({
-                "status": 200,
-                "message": Constants.SUCCESS,
-                "data": data
-            })
-        }
-        else {
-            res.send({
-                "status": 401,
-                "message": "only Super Admin AND Manager has access to getApprovedUsersList",
-            })
-        }
-    }
-    catch (err) {
-        next(err);
-    }
-})
-
-router.get('/getRejectedUsersList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
-    try {
-        const role = req.aud.split(":")[1];
-        if (role === "SUPER ADMIN" || role === "MANAGER") {
-            const adminServiceObj = new AdminService()
-            const data = await adminServiceObj.rejectedUsersList(req.body)
-            res.send({
-                "status": 200,
-                "message": Constants.SUCCESS,
-                "data": data
-            })
-        }
-        else {
-            res.send({
-                "status": 401,
-                "message": "only Super Admin AND Manager has access to getRejectedUsersList",
             })
         }
     }
