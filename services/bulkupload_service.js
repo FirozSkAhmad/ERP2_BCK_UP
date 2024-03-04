@@ -70,7 +70,7 @@ class BulkUpload {
         });
 
         if (missingFields) {
-            throw new Error(`Missing required fields for type ${type}`);
+            throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields for type ${type}`);
         }
     }
 

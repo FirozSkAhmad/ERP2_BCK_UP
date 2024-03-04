@@ -1,127 +1,154 @@
-const { Sequelize } = require('sequelize');
-const Constants = require('../utils/Constants/response_messages');
-const createHttpError = require('http-errors');
+const PayrollModel = require('../utils/Models/Payroll/PayrollModel')
+const RoleTypesModel = require('../utils/Models/PayrollRoleTypes/RoleTypesModel')
 
 class PayrollService {
     constructor() {
 
     }
 
-    async addNewPayRollDetails(payrollDetails) {
+    async addNewPayRoll(payrollDetails) {
         try {
-            const data = await global.DATA.MODELS.payroll.create({
-                ...payrollDetails,
-                payroll_type:"SALARY"
-            })
-                .catch(err => {
-                    console.log("Error while saving payroll details", err);
-                    throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR);
-                })
-            return data;
-        }
-        catch (err) {
-            throw err;
-        }
-    }
-
-    async editPayRollDetails(payroll_id, payrollDetails) {
-        try {
-            if (!payroll_id) {
-                throw new global.DATA.PLUGINS.httperrors.InternalServerError("Payroll Id cannot be empty");
-            }
-
-            const data = await global.DATA.MODELS.payroll.update({
+            this.validateRequiredFields(payrollDetails);
+            await PayrollModel.create({
                 ...payrollDetails
-            }, {
-                where: {
-                    id: payroll_id
-                }
-            }).catch(err => {
-                console.log("Error while updating payroll details", err);
-                throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR);
             })
+
+            return "Added Payroll Successfully";
+
         }
         catch (err) {
-            throw err;
+            console.error("Error in addNewPayRoll: ", err.message);
+
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            // Log and throw a generic server error for unknown errors
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
-    async getPayRollDetails() {
+    validateRequiredFields(data) {
+        const requiredFields = ['name', 'role_type', 'incentives', 'salary'];
+
+        // Identify missing fields
+        const missingFields = requiredFields.filter(field => !data.hasOwnProperty(field));
+
+        if (missingFields.length > 0) {
+            // Throw an error with a detailed message of missing fields
+            throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields: ${missingFields.join(', ')}`);
+        }
+    }
+
+    // async editPayRollDetails(payroll_id, payrollDetails) {
+    //     try {
+    //         if (!payroll_id) {
+    //             throw new global.DATA.PLUGINS.httperrors.InternalServerError("Payroll Id cannot be empty");
+    //         }
+
+    //         const data = await global.DATA.MODELS.payroll.update({
+    //             ...payrollDetails
+    //         }, {
+    //             where: {
+    //                 id: payroll_id
+    //             }
+    //         }).catch(err => {
+    //             console.log("Error while updating payroll details", err);
+    //             throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR);
+    //         })
+    //     }
+    //     catch (err) {
+    //         throw err;
+    //     }
+    // }
+
+    // async getPayRollDetails() {
+    //     try {
+    //         const data = await global.DATA.MODELS.payroll.findAll().catch(err => {
+    //             console.log("Error while fetching payroll data", err);
+    //             throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR);
+    //         });
+    //         return data;
+    //     }
+    //     catch (err) {
+    //         console.log(err);
+    //         throw err;
+    //     }
+    // }
+
+    // async deletePayRollDetails() {
+
+    // }
+
+    // async getExpenses() {
+    //     try {
+    //         const expenseData = await global.DATA.CONNECTION.mysql.query(`select SUM(amount) as total_expense from payroll`, {
+    //             type: Sequelize.QueryTypes.SELECT
+    //         }).catch(err => {
+    //             console.log("error in getting expenses:", err.message);
+    //             throw createHttpError.InternalServerError(Constants.SQL_ERROR);
+    //         })
+    //         return expenseData[0].total_expense
+    //     } catch (err) {
+    //         throw err;
+    //     }
+    // }
+
+    async getRoleTypes() {
         try {
-            const data = await global.DATA.MODELS.payroll.findAll().catch(err => {
-                console.log("Error while fetching payroll data", err);
-                throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR);
+            // Fetch all entries with only the 'role_type' attribute
+            const roleTypes = await RoleTypesModel.findAll({
+                attributes: ['role_type']
             });
-            return data;
+            // Return the fetched role types
+            return roleTypes;
         }
         catch (err) {
-            console.log(err);
-            throw err;
+            console.error("Error in getRoleTypes: ", err.message);
+
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            // Log and throw a generic server error for unknown errors
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
-    async deletePayRollDetails() {
+    async addRoleType(role_type) {
+        try {
+            await RoleTypesModel.create({ role_type })
 
-    }
-
-    async getExpenses(){
-        try{
-            const expenseData = await global.DATA.CONNECTION.mysql.query(`select SUM(amount) as total_expense from payroll`,{
-                type : Sequelize.QueryTypes.SELECT
-            }).catch(err=>{
-                console.log("error in getting expenses:",err.message);
-                throw createHttpError.InternalServerError(Constants.SQL_ERROR);
-            })
-            return expenseData[0].total_expense
-        }catch(err){
-            throw err;
+            return "Added Role Type Successfully";
         }
-    }
+        catch (err) {
+            console.error("Error in addRoleType: ", err.message);
 
-    async getRoleNames(){
-        try{
-            const data = await global.DATA.MODELS.roletypesmodel.findAll().catch(err => {
-                console.log("Error while fetching payroll data", err);
-                throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR);
-            });
-            return data;
-        }
-        catch(err){
-            throw err;
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            // Log and throw a generic server error for unknown errors
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
-    async addPayrollRole(role_name){
-        try{
-            const data = await global.DATA.MODELS.roletypesmodel.create({
-                role_name:role_name
-            }).catch(err => {
-                    console.log("Error while saving payroll role name details", err);
-                    throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR);
-                })
-            return data;
-        }
-        catch(err){
-            throw err;
-        }
-    }
-
-    async deletePayrollRole(id){
-        try{
-            const data = await global.DATA.MODELS.roletypesmodel.destroy({
-                where:{
-                    id:id
-                }
-            }).catch(err => {
-                    console.log("Error while deleting payroll role name details", err);
-                    throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR);
-                })
-            return data;
-        }
-        catch(err){
-            throw err;
-        }
-    }
+    // async deletePayrollRole(id) {
+    //     try {
+    //         const data = await global.DATA.MODELS.roletypesmodel.destroy({
+    //             where: {
+    //                 id: id
+    //             }
+    //         }).catch(err => {
+    //             console.log("Error while deleting payroll role name details", err);
+    //             throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR);
+    //         })
+    //         return data;
+    //     }
+    //     catch (err) {
+    //         throw err;
+    //     }
+    // }
 }
 
 module.exports = PayrollService;

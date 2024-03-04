@@ -6,16 +6,22 @@ const Constants = require('../utils/Constants/response_messages')
 const jwtHelperObj = new JwtHelper();
 
 // Add new Payroll
-router.post('/addPayRollDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.post('/addNewPayRoll', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
-        const payRollServiceObj = new PayrollService();
-        const data = await payRollServiceObj.addNewPayRollDetails(req.body);
+        const role = req.aud.split(":")[1];
+        if (role === "SUPER ADMIN") {
+            const payRollServiceObj = new PayrollService();
+            const message = await payRollServiceObj.addNewPayRoll(req.body);
 
-        res.send({
-            "status": 201,
-            "message": Constants.SUCCESS,
-            "data": data
-        })
+            res.send({
+                "status": 201,
+                message
+            })
+        } else {
+            res.status(401).send({
+                "message": "Only SUPER ADMIN has access to addNewPayRoll",
+            });
+        }
     }
     catch (err) {
         next(err);
@@ -23,98 +29,117 @@ router.post('/addPayRollDetails', jwtHelperObj.verifyAccessToken, async (req, re
 })
 
 // Edit payroll details
-router.post('/editPayRollDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+// router.post('/editPayRollDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+//     try {
+//         const payRollServiceObj = new PayrollService();
+//         const { name, amount, role_type } = { ...req.body }
+//         const updatePayload = { name, amount, role_type }
+//         const data = await payRollServiceObj.editPayRollDetails(req.body.id, updatePayload);
+//         res.send({
+//             "status": 200,
+//             "message": Constants.SUCCESS
+//         })
+//     }
+//     catch (err) {
+//         next(err);
+//     }
+// })
+
+// // Get All Payroll details
+// router.get('/getPayRollDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+//     try {
+//         const payRollServiceObj = new PayrollService();
+//         const data = await payRollServiceObj.getPayRollDetails();
+//         res.send({
+//             "status": 200,
+//             "message": Constants.SUCCESS,
+//             "data": data
+//         })
+
+//     }
+//     catch (err) {
+//         next(err);
+//     }
+// })
+
+// router.get('/getExpenses', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+//     try {
+//         const payRollServiceObj = new PayrollService();
+//         const data = await payRollServiceObj.getExpenses();
+//         res.send({
+//             "status": 200,
+//             "message": Constants.SUCCESS,
+//             "data": data
+//         })
+
+//     }
+//     catch (err) {
+//         next(err);
+//     }
+// })
+
+router.get("/getRoleTypes", jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
-        const payRollServiceObj = new PayrollService();
-        const { name, amount, role_type } = { ...req.body }
-        const updatePayload = { name, amount, role_type }
-        const data = await payRollServiceObj.editPayRollDetails(req.body.id, updatePayload);
-        res.send({
-            "status": 200,
-            "message": Constants.SUCCESS
-        })
+        const role = req.aud.split(":")[1];
+        if (role === "SUPER ADMIN") {
+            const payRollServiceObj = new PayrollService();
+            const roleTypes = await payRollServiceObj.getRoleTypes();
+            res.send({
+                "status": 200,
+                "message": Constants.SUCCESS,
+                roleTypes
+            })
+        } else {
+            res.status(401).send({
+                "message": "Only SUPER ADMIN has access to getRoleTypes",
+            });
+        }
     }
     catch (err) {
         next(err);
     }
 })
 
-// Get All Payroll details
-router.get('/getPayRollDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.post("/addRoleType", jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
-        const payRollServiceObj = new PayrollService();
-        const data = await payRollServiceObj.getPayRollDetails();
-        res.send({
-            "status": 200,
-            "message": Constants.SUCCESS,
-            "data": data
-        })
+        const role = req.aud.split(":")[1];
+        if (role === "SUPER ADMIN") {
+            const { role_type } = req.body;
 
+            if (!req.body.hasOwnProperty('role_type')) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("role_type field is missing");
+            }
+
+            const payRollServiceObj = new PayrollService();
+            const message = await payRollServiceObj.addRoleType(role_type);
+            res.send({
+                "status": 201,
+                message
+            })
+        } else {
+            res.status(401).send({
+                "message": "Only SUPER ADMIN has access to addRoleType",
+            });
+        }
     }
     catch (err) {
         next(err);
     }
 })
 
-router.get('/getExpenses',jwtHelperObj.verifyAccessToken, async (req, res, next) => {
-    try {
-        const payRollServiceObj = new PayrollService();
-        const data = await payRollServiceObj.getExpenses();
-        res.send({
-            "status": 200,
-            "message": Constants.SUCCESS,
-            "data": data
-        })
+// router.post("/deletePayrollRole", jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+//     try {
+//         const payRollServiceObj = new PayrollService();
+//         const data = await payRollServiceObj.deletePayrollRole(req.body.id);
+//         res.send({
+//             "status": 200,
+//             "message": Constants.SUCCESS,
+//             "data": data
+//         })
+//     }
+//     catch (err) {
+//         next(err);
+//     }
+// })
 
-    }
-    catch (err) {
-        next(err);
-    }
-})
-
-router.get("/getRoleTypes", jwtHelperObj.verifyAccessToken, async (req,res,next)=>{
-    try {
-        const payRollServiceObj = new PayrollService();
-        const data = await payRollServiceObj.getRoleNames();
-        res.send({
-            "status": 200,
-            "message": Constants.SUCCESS,
-            "data": data
-        })
-
-    }
-    catch (err) {
-        next(err);
-    }
-})
-
-router.post("/addPayrollRole", jwtHelperObj.verifyAccessToken, async (req,res,next)=>{
-    try {
-        const payRollServiceObj = new PayrollService();
-        const data = await payRollServiceObj.addPayrollRole(req.body.role_name);
-        res.send({
-            "status": 200,
-            "message": Constants.SUCCESS,
-            "data": data
-        })
-    }
-    catch (err) {
-        next(err);
-    }
-})
-
-router.post("/deletePayrollRole", jwtHelperObj.verifyAccessToken, async (req,res,next)=>{
-    try {
-        const payRollServiceObj = new PayrollService();
-        const data = await payRollServiceObj.deletePayrollRole(req.body.id);
-        res.send({
-            "status": 200,
-            "message": Constants.SUCCESS,
-            "data": data
-        })
-    }
-    catch (err) {
-        next(err);
-    }
-})
 module.exports = router;

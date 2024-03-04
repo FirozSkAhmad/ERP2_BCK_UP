@@ -72,192 +72,192 @@ class ProjectsService {
     }
 
 
-    async editProject(payload) {
-        try {
-            let currentProjectId = payload.project_id;
-            let currentPid = payload.pid;
-            let payloadIdentifierCheck;
-            let checkProjectName = (payload.project_name).split('').join('');
-            let checkProjectType = (payload.project_type).split('').join('');
-            if (checkProjectType === 'Apartment') {
-                let checkProjectTowerNumber = (payload.tower_number).split('').join('');
-                let checkProjectFlatNumber = (payload.flat_number).split('').join('');
-                payloadIdentifierCheck = checkProjectName + '_' + checkProjectType + '_' + checkProjectTowerNumber + '_' + checkProjectFlatNumber;
-            }
-            else if (checkProjectType === 'Villa') {
-                let checkProjectVillaNumber = (payload.villa_number).split('').join('');
-                payloadIdentifierCheck = checkProjectName + '_' + checkProjectType + '_' + checkProjectVillaNumber;
-            }
-            else if (checkProjectType === 'Plot') {
-                let checkProjectPlotNumber = (payload.plot_number).split('').join('');
-                payloadIdentifierCheck = checkProjectName + '_' + checkProjectType + '_' + checkProjectPlotNumber;
-            }
-            else {
-                throw createError.BadRequest("Provide Correct Project Type");
-            }
-            if (currentPid !== payloadIdentifierCheck) {
+    // async editProject(payload) {
+    //     try {
+    //         let currentProjectId = payload.project_id;
+    //         let currentPid = payload.pid;
+    //         let payloadIdentifierCheck;
+    //         let checkProjectName = (payload.project_name).split('').join('');
+    //         let checkProjectType = (payload.project_type).split('').join('');
+    //         if (checkProjectType === 'Apartment') {
+    //             let checkProjectTowerNumber = (payload.tower_number).split('').join('');
+    //             let checkProjectFlatNumber = (payload.flat_number).split('').join('');
+    //             payloadIdentifierCheck = checkProjectName + '_' + checkProjectType + '_' + checkProjectTowerNumber + '_' + checkProjectFlatNumber;
+    //         }
+    //         else if (checkProjectType === 'Villa') {
+    //             let checkProjectVillaNumber = (payload.villa_number).split('').join('');
+    //             payloadIdentifierCheck = checkProjectName + '_' + checkProjectType + '_' + checkProjectVillaNumber;
+    //         }
+    //         else if (checkProjectType === 'Plot') {
+    //             let checkProjectPlotNumber = (payload.plot_number).split('').join('');
+    //             payloadIdentifierCheck = checkProjectName + '_' + checkProjectType + '_' + checkProjectPlotNumber;
+    //         }
+    //         else {
+    //             throw createError.BadRequest("Provide Correct Project Type");
+    //         }
+    //         if (currentPid !== payloadIdentifierCheck) {
 
-                console.log('payloadidentifier in edit:', payloadIdentifierCheck);
-                // Check in Projects table whether pid is present or not
-                const finder = await ProjectsModel.findOne({
-                    where: {
-                        pid: payloadIdentifierCheck
-                    }
-                }).catch(err => {
-                    console.log("Error", err.message)
-                    throw createError.InternalServerError(SQL_ERROR)
-                })
+    //             console.log('payloadidentifier in edit:', payloadIdentifierCheck);
+    //             // Check in Projects table whether pid is present or not
+    //             const finder = await ProjectsModel.findOne({
+    //                 where: {
+    //                     pid: payloadIdentifierCheck
+    //                 }
+    //             }).catch(err => {
+    //                 console.log("Error", err.message)
+    //                 throw createError.InternalServerError(SQL_ERROR)
+    //             })
 
-                //Project Already Present
-                if (finder) {
-                    throw createError.Conflict("Project already created with the given details, Change it");
-                }
-            }
+    //             //Project Already Present
+    //             if (finder) {
+    //                 throw createError.Conflict("Project already created with the given details, Change it");
+    //             }
+    //         }
 
-            console.log('edit doesn not exist:', payloadIdentifierCheck);
-            let UpdateQuery;
-            if (payload.project_type === 'Apartment') {
-                UpdateQuery = `update projects set project_name='${payload.project_name}', tower_number='${payload.tower_number}' , flat_number='${payload.flat_number}' , status='${payload.status}' , pid='${payloadIdentifierCheck}' where project_id=${currentProjectId}`
-            }
-            else if (payload.project_type === 'Villa') {
-                UpdateQuery = `update projects set project_name='${payload.project_name}' , villa_number='${payload.villa_number}' , status='${payload.status}' , pid='${payloadIdentifierCheck}' where project_id=${currentProjectId}`
-            }
-            else if (payload.project_type === 'Plot') {
-                UpdateQuery = `update projects set project_name='${payload.project_name}' , plot_number='${payload.plot_number}' , status='${payload.status}' , pid='${payloadIdentifierCheck}' where project_id=${currentProjectId}`
-            }
-            console.log('edit update query:', UpdateQuery);
-            const response = await DATA.CONNECTION.mysql.query(UpdateQuery, {
-                type: Sequelize.QueryTypes.UPDATE
-            }).catch(err => {
-                console.log("Error while updating data", err.message);
-                throw createError.InternalServerError(SQL_ERROR);
-            })
+    //         console.log('edit doesn not exist:', payloadIdentifierCheck);
+    //         let UpdateQuery;
+    //         if (payload.project_type === 'Apartment') {
+    //             UpdateQuery = `update projects set project_name='${payload.project_name}', tower_number='${payload.tower_number}' , flat_number='${payload.flat_number}' , status='${payload.status}' , pid='${payloadIdentifierCheck}' where project_id=${currentProjectId}`
+    //         }
+    //         else if (payload.project_type === 'Villa') {
+    //             UpdateQuery = `update projects set project_name='${payload.project_name}' , villa_number='${payload.villa_number}' , status='${payload.status}' , pid='${payloadIdentifierCheck}' where project_id=${currentProjectId}`
+    //         }
+    //         else if (payload.project_type === 'Plot') {
+    //             UpdateQuery = `update projects set project_name='${payload.project_name}' , plot_number='${payload.plot_number}' , status='${payload.status}' , pid='${payloadIdentifierCheck}' where project_id=${currentProjectId}`
+    //         }
+    //         console.log('edit update query:', UpdateQuery);
+    //         const response = await DATA.CONNECTION.mysql.query(UpdateQuery, {
+    //             type: Sequelize.QueryTypes.UPDATE
+    //         }).catch(err => {
+    //             console.log("Error while updating data", err.message);
+    //             throw createError.InternalServerError(SQL_ERROR);
+    //         })
 
-            //send data as response
-            const updatedData = await ProjectsModel.findOne({
-                where: {
-                    project_id: currentProjectId
-                }
-            }).catch(err => {
-                console.log("Error", err.message)
-                throw createError.InternalServerError(SQL_ERROR)
-            })
+    //         //send data as response
+    //         const updatedData = await ProjectsModel.findOne({
+    //             where: {
+    //                 project_id: currentProjectId
+    //             }
+    //         }).catch(err => {
+    //             console.log("Error", err.message)
+    //             throw createError.InternalServerError(SQL_ERROR)
+    //         })
 
-            return updatedData;
-
-
-        } catch (err) {
-            throw err;
-        }
-    }
-
-    async changeProjectStatus(payload) {
-        try {
-            await global.DATA.CONNECTION.mysql.transaction(async (t) => {
-
-                let payloadIdentifierCheck;
-                let checkProjectName = (payload.project_name).split('').join('');
-                let checkProjectType = (payload.project_type).split('').join('');
-                if (checkProjectType === 'Apartment') {
-                    let checkProjectTowerNumber = (payload.tower_number).split('').join('');
-                    let checkProjectFlatNumber = (payload.flat_number).split('').join('');
-                    payloadIdentifierCheck = checkProjectName + '_' + checkProjectType + '_' + checkProjectTowerNumber + '_' + checkProjectFlatNumber;
-                }
-                else if (checkProjectType === 'Villa') {
-                    let checkProjectVillaNumber = (payload.villa_number).split('').join('');
-                    payloadIdentifierCheck = checkProjectName + '_' + checkProjectType + '_' + checkProjectVillaNumber;
-                }
-                else if (checkProjectType === 'Plot') {
-                    let checkProjectPlotNumber = (payload.plot_number).split('').join('');
-                    payloadIdentifierCheck = checkProjectName + '_' + checkProjectType + '_' + checkProjectPlotNumber;
-                }
-
-                const getProjectData = await global.DATA.MODELS.projects.findOne({
-                    where: {
-                        pid: payloadIdentifierCheck
-                    },
-                    transaction: t
-                }).catch(err => {
-                    throw createError.InternalServerError(SQL_ERROR);
-                })
-                console.log('sd:', getProjectData);
-                console.log('sd check:', (getProjectData == null));
-                payload.pid = payloadIdentifierCheck;
-                payload.project_id = getProjectData?.project_id;
-                console.log('payload:', payload);
-
-                if ((getProjectData == null)) throw createError.BadRequest("Project Does not exists")
-                console.log("Reached HEre")
-
-                //check project exist in projects table or not 
-                const checkProjectExistAlreadyInProject = await global.DATA.MODELS.projects.findOne({
-                    where: {
-                        project_id: payload.project_id
-                    },
-                    transaction: t
-                }).catch(err => {
-                    console.log(err);
-                    throw createError.InternalServerError(SQL_ERROR);
-                })
-
-                //Update status and amount in projects table
-                await global.DATA.MODELS.projects.update({
-                    status: payload.status,
-                    amount_received: parseInt(checkProjectExistAlreadyInProject.amount_received) + parseInt(payload.amount_received)
-                }, {
-                    where: {
-                        project_id: payload.project_id,
-                    },
-                    transaction: t
-                }).catch(err => {
-                    console.log(err);
-                    throw createError.InternalServerError(SQL_ERROR);
-                })
-
-                //check project exist in income table or not 
-                const checkProjectExistAlreadyInIncome = await global.DATA.MODELS.income.findOne({
-                    where: {
-                        project_id: payload.project_id
-                    },
-                    transaction: t
-                }).catch(err => {
-                    throw createError.InternalServerError(SQL_ERROR);
-                })
-
-                console.log("checkProjectExistAlreadyInIncome:", checkProjectExistAlreadyInIncome)
-
-                if (checkProjectExistAlreadyInIncome) {
-                    console.log("project already exists in income table");
-                    //then update details with amount added 
-
-                    let previouslyReceivedAmount = checkProjectExistAlreadyInIncome.amount_received;
-                    console.log('previously received amount:', previouslyReceivedAmount);
+    //         return updatedData;
 
 
-                    let updateIncomeDetails = {
-                        status: payload.status,
-                        amount_received: parseInt(previouslyReceivedAmount) + parseInt(payload.amount_received),
-                    }
+    //     } catch (err) {
+    //         throw err;
+    //     }
+    // }
 
-                    await global.DATA.MODELS.income.update(updateIncomeDetails, {
-                        where: {
-                            project_id: payload.project_id
-                        },
-                        transaction: t
-                    })
-                }
-                else {
-                    throw createError.BadRequest("First Onboard the Client and then change the project status")
-                }
+    // async changeProjectStatus(payload) {
+    //     try {
+    //         await global.DATA.CONNECTION.mysql.transaction(async (t) => {
 
-            })
-            return "Project Status Changed Successfully"
+    //             let payloadIdentifierCheck;
+    //             let checkProjectName = (payload.project_name).split('').join('');
+    //             let checkProjectType = (payload.project_type).split('').join('');
+    //             if (checkProjectType === 'Apartment') {
+    //                 let checkProjectTowerNumber = (payload.tower_number).split('').join('');
+    //                 let checkProjectFlatNumber = (payload.flat_number).split('').join('');
+    //                 payloadIdentifierCheck = checkProjectName + '_' + checkProjectType + '_' + checkProjectTowerNumber + '_' + checkProjectFlatNumber;
+    //             }
+    //             else if (checkProjectType === 'Villa') {
+    //                 let checkProjectVillaNumber = (payload.villa_number).split('').join('');
+    //                 payloadIdentifierCheck = checkProjectName + '_' + checkProjectType + '_' + checkProjectVillaNumber;
+    //             }
+    //             else if (checkProjectType === 'Plot') {
+    //                 let checkProjectPlotNumber = (payload.plot_number).split('').join('');
+    //                 payloadIdentifierCheck = checkProjectName + '_' + checkProjectType + '_' + checkProjectPlotNumber;
+    //             }
+
+    //             const getProjectData = await global.DATA.MODELS.projects.findOne({
+    //                 where: {
+    //                     pid: payloadIdentifierCheck
+    //                 },
+    //                 transaction: t
+    //             }).catch(err => {
+    //                 throw createError.InternalServerError(SQL_ERROR);
+    //             })
+    //             console.log('sd:', getProjectData);
+    //             console.log('sd check:', (getProjectData == null));
+    //             payload.pid = payloadIdentifierCheck;
+    //             payload.project_id = getProjectData?.project_id;
+    //             console.log('payload:', payload);
+
+    //             if ((getProjectData == null)) throw createError.BadRequest("Project Does not exists")
+    //             console.log("Reached HEre")
+
+    //             //check project exist in projects table or not 
+    //             const checkProjectExistAlreadyInProject = await global.DATA.MODELS.projects.findOne({
+    //                 where: {
+    //                     project_id: payload.project_id
+    //                 },
+    //                 transaction: t
+    //             }).catch(err => {
+    //                 console.log(err);
+    //                 throw createError.InternalServerError(SQL_ERROR);
+    //             })
+
+    //             //Update status and amount in projects table
+    //             await global.DATA.MODELS.projects.update({
+    //                 status: payload.status,
+    //                 amount_received: parseInt(checkProjectExistAlreadyInProject.amount_received) + parseInt(payload.amount_received)
+    //             }, {
+    //                 where: {
+    //                     project_id: payload.project_id,
+    //                 },
+    //                 transaction: t
+    //             }).catch(err => {
+    //                 console.log(err);
+    //                 throw createError.InternalServerError(SQL_ERROR);
+    //             })
+
+    //             //check project exist in income table or not 
+    //             const checkProjectExistAlreadyInIncome = await global.DATA.MODELS.income.findOne({
+    //                 where: {
+    //                     project_id: payload.project_id
+    //                 },
+    //                 transaction: t
+    //             }).catch(err => {
+    //                 throw createError.InternalServerError(SQL_ERROR);
+    //             })
+
+    //             console.log("checkProjectExistAlreadyInIncome:", checkProjectExistAlreadyInIncome)
+
+    //             if (checkProjectExistAlreadyInIncome) {
+    //                 console.log("project already exists in income table");
+    //                 //then update details with amount added 
+
+    //                 let previouslyReceivedAmount = checkProjectExistAlreadyInIncome.amount_received;
+    //                 console.log('previously received amount:', previouslyReceivedAmount);
 
 
-        } catch (err) {
-            throw err;
-        }
-    }
+    //                 let updateIncomeDetails = {
+    //                     status: payload.status,
+    //                     amount_received: parseInt(previouslyReceivedAmount) + parseInt(payload.amount_received),
+    //                 }
+
+    //                 await global.DATA.MODELS.income.update(updateIncomeDetails, {
+    //                     where: {
+    //                         project_id: payload.project_id
+    //                     },
+    //                     transaction: t
+    //                 })
+    //             }
+    //             else {
+    //                 throw createError.BadRequest("First Onboard the Client and then change the project status")
+    //             }
+
+    //         })
+    //         return "Project Status Changed Successfully"
+
+
+    //     } catch (err) {
+    //         throw err;
+    //     }
+    // }
 
     async getProjectNames() {
         try {

@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize')
 
-const PayrollModel = global.DATA.CONNECTION.mysql.define("payroll", {
-    payroll_id: {
+const MiscellaneousModel = global.DATA.CONNECTION.mysql.define("miscellaneous", {
+    miscellaneous_id: {
         type: Sequelize.DataTypes.INTEGER,
         primaryKey: true,
         allowNull: false,
@@ -11,18 +11,14 @@ const PayrollModel = global.DATA.CONNECTION.mysql.define("payroll", {
         type: Sequelize.STRING(100),
         allowNull: false
     },
-    role_type: {
+    reason: {
         type: Sequelize.STRING(100),
         allowNull: false
     },
-    incentives: {
+    amount: {
         type: Sequelize.FLOAT,
         allowNull: false,
         defaultValue: 0
-    },
-    salary: {
-        type: Sequelize.FLOAT,
-        allowNull: false
     },
     createdAt: {
         type: Sequelize.DataTypes.DATE,
@@ -33,7 +29,7 @@ const PayrollModel = global.DATA.CONNECTION.mysql.define("payroll", {
         allowNull: false
     }
 }, {
-    tableName: "payroll"
+    tableName: "miscellaneous"
 })
 
-module.exports = PayrollModel;
+module.exports = MiscellaneousModel;
