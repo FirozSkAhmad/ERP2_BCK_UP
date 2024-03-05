@@ -5,12 +5,20 @@ const JwtHelper = require('../utils/Helpers/jwt_helper')
 const jwtHelperObj = new JwtHelper();
 const router = express.Router()
 
-router.get('/getPartPaymentsList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.get('/getPaymentsList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const role = req.aud.split(":")[1];
-        if (role === "SUPER_ADMIN") {
+        if (role === "SUPER ADMIN") {
+            const { statusFilter } = req.query;
+            if (!statusFilter) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Status filter is required");
+            }
+            if (!["PART PAYMENT", "BLOCKED"].includes(statusFilter)) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid Status Filter Provided");
+            }
+
             const paymentsServiceObj = new PaymentsServices();
-            const data = await paymentsServiceObj.getPartPaymentsList(req.body)
+            const data = await paymentsServiceObj.getPaymentsList(statusFilter.toUpperCase())
 
             res.send({
                 "status": 201,
@@ -28,10 +36,10 @@ router.get('/getPartPaymentsList', jwtHelperObj.verifyAccessToken, async (req, r
     }
 })
 
-router.get('/payPartPayment', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.post('/payPartPayment', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const role = req.aud.split(":")[1];
-        if (role === "SUPER_ADMIN") {
+        if (role === "SUPER ADMIN") {
             const paymentsServiceObj = new PaymentsServices();
             const data = await paymentsServiceObj.payPartPayment(req.body)
 
@@ -42,7 +50,7 @@ router.get('/payPartPayment', jwtHelperObj.verifyAccessToken, async (req, res, n
             })
         } else {
             res.status(401).send({
-                "message": "Only SUPER ADMIN has access to getPartPaymentsList",
+                "message": "Only SUPER ADMIN has access to payPartPayment",
             });
         }
     }
@@ -51,27 +59,27 @@ router.get('/payPartPayment', jwtHelperObj.verifyAccessToken, async (req, res, n
     }
 })
 
-router.get('/getBlockedList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
-    try {
-        const role = req.aud.split(":")[1];
-        if (role === "SUPER_ADMIN") {
-            const paymentsServiceObj = new PaymentsServices();
-            const data = await paymentsServiceObj.getBlockedList(req.body)
+// router.get('/getBlockedList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+//     try {
+//         const role = req.aud.split(":")[1];
+//         if (role === "SUPER ADMIN") {
+//             const paymentsServiceObj = new PaymentsServices();
+//             const data = await paymentsServiceObj.getBlockedList(req.body)
 
-            res.send({
-                "status": 201,
-                "message": Constants.SUCCESS,
-                "data": data
-            })
-        } else {
-            res.status(401).send({
-                "message": "Only SUPER ADMIN has access to getPartPaymentsList",
-            });
-        }
-    }
-    catch (err) {
-        next(err);
-    }
-})
+//             res.send({
+//                 "status": 201,
+//                 "message": Constants.SUCCESS,
+//                 "data": data
+//             })
+//         } else {
+//             res.status(401).send({
+//                 "message": "Only SUPER ADMIN has access to getBlockedList",
+//             });
+//         }
+//     }
+//     catch (err) {
+//         next(err);
+//     }
+// })
 
 module.exports = router;

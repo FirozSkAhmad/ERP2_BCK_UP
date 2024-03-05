@@ -5,7 +5,11 @@ const PropertyDetailsModel = global.DATA.CONNECTION.mysql.define("PropertyDetail
         type: Sequelize.DataTypes.INTEGER,
         primaryKey: true,
         allowNull: false,
-        unique: true
+        autoIncrement: true
+    },
+    project_id: {
+        type: Sequelize.DataTypes.INTEGER,
+        allowNull: false
     },
     property_price: {
         type: Sequelize.DataTypes.INTEGER,

@@ -1,12 +1,14 @@
 const createError = require('http-errors')
 const { SQL_ERROR } = require('../utils/Constants/response_messages')
 const { Sequelize } = require('sequelize');
+const UsersModel = require('../utils/Models/Users/UsersModel');
 const ReceiptsModel = require('../utils/Models/Receipts/ReceiptsModel');
 const ProjectsModel = require('../utils/Models/Projects/ProjectsModel');
 const CommissionsModel = require('../utils/Models/Commission/CommissionsModel');
 const PropertyDetailsModel = require('../utils/Models/PropertyDetails/PropertyDetailsModel');
 const TokenOrAdvanceHistoryModel = require('../utils/Models/TokenOrAdvanceHistory/TokenOrAdvanceHistoryModel');
 const BlockedProjectsModel = require('../utils/Models/BlockedProjects/BlockedProjectsModel');
+const PartPaymentHistoryModel = require('../utils/Models/PartPaymentHistory/PartPaymentHistoryModel');
 const Constants = require('../utils/Constants/response_messages')
 
 
@@ -15,42 +17,107 @@ class ReceiptServices {
         // Assuming DATA, and models like ReceiptsModel, ProjectsModel are available in the context
     }
 
-    async getPartPaymentsList() {
+    async getPaymentsList(statusFilter) {
         try {
-            const ReceiptsData = await ReceiptsModel.findAll({
-                where: {
-                    receipt_status: "A" // Assuming "A" means "Approved" or similar
-                },
+            // Common attributes for all queries
+            const commonAttributes = {
+                where: { receipt_status: "A" }, // Assuming "A" means "Approved"
+                attributes: ['receipt_id', 'client_name'],
                 include: [
-                    {
-                        model: Projects, // Adjust model references as needed
-                        where: { status: "PART-PAYMENT" }
-                    },
-                    {
-                        model: PropertyDetails, // Adjust model references as needed
-                        include: [
-                            {
-                                model: TokenOrAdvanceHistories,
-                            }
-                        ]
-                    },
-                    {
-                        model: Users, // Adjust model references as needed
-                    }
+                    // {
+                    //     model: UsersModel, // Adjust model references as needed
+                    //     attributes: [['user_name', 'client_name']], // Alias user_name as client_name
+                    // }
                 ],
-            });
+            };
 
+            // Adding specific conditions based on the list type
+            if (statusFilter === 'BLOCKED') {
+                commonAttributes.include.push({
+                    model: ProjectsModel, // Adjust model references as needed
+                    where: { status: statusFilter },
+                    attributes: ['project_id', 'project_name', 'project_type'],
+                });
+                commonAttributes.include.push({
+                    model: PropertyDetailsModel, // Adjust model references as needed
+                    include: [{
+                        model: BlockedProjectsModel,
+                        attributes: ['date_of_blocked', 'no_of_days_blocked'],
+                    }],
+                });
+            } else if (statusFilter === 'PART PAYMENT') {
+                commonAttributes.include.push({
+                    model: ProjectsModel, // Adjust model references as needed
+                    where: { status: statusFilter },
+                    attributes: ['project_id', 'project_name', 'project_type'],
+                });
+                commonAttributes.include.push({
+                    model: PropertyDetailsModel, // Adjust model references as needed
+                    attributes: ['pending_payment'],
+                });
+            } else {
+                throw new Error("Invalid list type specified");
+            }
+
+            // Execute query with dynamically constructed attributes
+            const ReceiptsData = await ReceiptsModel.findAll(commonAttributes);
             return ReceiptsData;
 
         } catch (err) {
-            console.error("Error in getPartPaymentsList: ", err.message);
-            throw new Error("An error occurred while fetching part payments list.");
+            console.error(`Error while getting ${statusFilter} list:`, err.message);
+
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            // Log and throw a generic server error for unknown errors
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
+
+    // async getPartPaymentsList() {
+    //     try {
+    //         const ReceiptsData = await ReceiptsModel.findAll({
+    //             where: {
+    //                 receipt_status: "A" // Assuming "A" means "Approved" or similar
+    //             },
+    //             attributes: ['receipt_id'],
+    //             include: [
+    //                 {
+    //                     model: ProjectsModel, // Adjust model references as needed
+    //                     where: { status: "PART PAYMENT" },
+    //                     attributes: ['project_id', 'project_name', 'project_type'],
+    //                 },
+    //                 {
+    //                     model: PropertyDetailsModel, // Adjust model references as needed
+    //                     attributes: ['pending_payment'],
+    //                 },
+    //                 {
+    //                     model: UsersModel, // Adjust model references as needed
+    //                     attributes: ['user_name'],
+    //                 }
+    //             ],
+    //         });
+
+    //         return ReceiptsData;
+    //     } catch (err) {
+    //         console.error("Error while getPartPaymentsList:", err.message);
+
+    //         // If it's a known error, rethrow it for the router to handle
+    //         if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+    //             throw err;
+    //         }
+    //         // Log and throw a generic server error for unknown errors
+    //         throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+    //     }
+    // }
 
     async payPartPayment(payload) {
         let transaction;
         try {
+            if (payload.project_id === undefined || payload.project_id === null) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Required project_id in req.body.");
+            }
             transaction = await DATA.CONNECTION.mysql.transaction();
 
             if (payload.status === "AVAILABLE") {
@@ -59,31 +126,40 @@ class ReceiptServices {
                 const currentDetails = await PropertyDetailsModel.findOne({
                     where: {
                         project_id: payload.project_id,
+                        completely_deleted: false
                     },
                     include: [
                         {
-                            model: BlockedProjects,
+                            model: TokenOrAdvanceHistoryModel,
+                        },
+                        {
+                            model: BlockedProjectsModel,
                         }
                     ],
                     transaction: transaction
                 });
 
 
-                if (!currentDetails) throw new Error("Property details not found.");
+                if (!currentDetails) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Property details not found.");
+                }
 
-                switch (payload.status) {
+                switch (payload.status.toUpperCase()) {
                     case "BLOCKED":
+                        // Handle the logic for when the status is BLOCKED
                         await this.handleBlockedStatus(payload, currentDetails, transaction);
                         break;
                     case "SOLD":
+                        // Handle the logic for when the status is SOLD
                         await this.handleSoldStatus(payload, currentDetails, transaction);
                         break;
-                    case "PART-PAYMENT":
+                    case "PART PAYMENT":
+                        // Handle the logic for when the status is PART PAYMENT
                         await this.handlePartPaymentStatus(payload, currentDetails, transaction);
                         break;
                     default:
-                        console.log(`Unhandled status: ${payload.status}`);
-                        break;
+                        // Throw an error if the status is not recognized
+                        throw new global.DATA.PLUGINS.httperrors.BadRequest(`Unhandled status: ${payload.status}`);
                 }
             }
 
@@ -91,18 +167,23 @@ class ReceiptServices {
             return "PAYMENT SUCCESSFULLY PROCESSED";
 
         } catch (err) {
-            if (transaction) await transaction.rollback();
             console.error("Error in payPartPayment: ", err.message);
-            throw new Error("An error occurred while processing part payment.");
+            if (transaction) await transaction.rollback();
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            }
+            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
     async handleBlockedStatus(payload, currentDetails, transaction) {
-        const updateDetails = this.calculateBlockedDetails(payload, currentDetails);
 
-        if (updateDetails.extraDays === 0) {
-            throw new Error("Required Extra days value to increase block days.");
+        if (payload.added_extra_days === undefined || payload.added_extra_days === null) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("Required Extra days value to increase block days.");
         }
+
+        const updateDetails = this.calculateBlockedDetails(payload, currentDetails);
 
         await BlockedProjectsModel.update(updateDetails.updates, {
             where: { blocked_id: currentDetails.blocked_id },
@@ -114,10 +195,14 @@ class ReceiptServices {
         const updateDetails = this.calculatePaymentDetails(payload, currentDetails);
 
         if (updateDetails.newPendingPayment !== 0) {
-            throw new Error("To change status to SOLD, remaining payment should be zero.");
+            throw global.DATA.PLUGINS.httperrors.BadRequest("To change status to SOLD, remaining payment should be zero.");
         }
 
-        await PropertyDetailsModel.update(updateDetails.updates, {
+        await PartPaymentHistoryModel.create(updateDetails.updates.ppUpdates, {
+            transaction: transaction
+        });
+
+        await PropertyDetailsModel.update(updateDetails.updates.pdUpdates, {
             where: { project_id: payload.project_id },
             transaction: transaction
         });
@@ -131,15 +216,19 @@ class ReceiptServices {
     async handlePartPaymentStatus(payload, currentDetails, transaction) {
         const updateDetails = this.calculatePaymentDetails(payload, currentDetails);
 
-        if (currentDetails.status !== payload.status) {
-            await ProjectsModel.update({ status: "PART-PAYMENT" }, {
+        if (currentDetails.status !== payload.status.toUpperCase()) {
+            await ProjectsModel.update({ status: "PART PAYMENT" }, {
                 where: { project_id: currentDetails.project_id },
                 transaction: transaction
             });
         }
 
-        await PropertyDetailsModel.update(updateDetails.updates, {
-            where: { project_id: payload.project_id },
+        await PartPaymentHistoryModel.create(updateDetails.updates.ppUpdates, {
+            transaction: transaction
+        });
+
+        await PropertyDetailsModel.update(updateDetails.updates.pdUpdates, {
+            where: { pd_id: payload.pd_id },
             transaction: transaction
         });
     }
@@ -150,7 +239,7 @@ class ReceiptServices {
             transaction: transaction
         });
 
-        await PropertyDetailsModel.update({ deleted: "true" }, {
+        await PropertyDetailsModel.update({ completely_deleted: true }, {
             where: { project_id: payload.project_id },
             transaction: transaction
         });
@@ -158,82 +247,115 @@ class ReceiptServices {
 
     calculateBlockedDetails(payload, currentDetails) {
         const extraDays = payload.added_extra_days
-        const newNoOfDaysBlocked = currentDetails.no_of_days_blocked + extraDays;
-        const newRemark = payload.remark;
+        const newNoOfDaysBlocked = currentDetails.BlockedProject.no_of_days_blocked + extraDays;
+        const newRemark = payload.remark || null;
 
         return {
             updates: {
                 no_of_days_blocked: newNoOfDaysBlocked,
                 remark: newRemark
-            },
-            extraDays
+            }
         };
     }
 
     calculatePaymentDetails(payload, currentDetails) {
-        // Assuming payload.property_price and payload.discount_percent are validated and sanitized
-        const discountAmount = (payload.property_price * (payload.discount_percent || 0)) / 100;
-        const priceAfterDiscount = payload.property_price - discountAmount;
-        const newAmountPaidTillNow = (currentDetails.amount_paid_till_now || 0) + payload.amount;
-        const newPendingPayment = priceAfterDiscount - newAmountPaidTillNow;
-        const dateString = new Date().toISOString().slice(0, 10); // Simplified date handling
 
-
-        let updates = {
-            amount_paid_till_now: newAmountPaidTillNow,
-            pending_payment: newPendingPayment,
-            no_of_part_payments: (currentDetails.no_of_part_payments || 0) + 1,
-            date_of_pp_payment: dateString
-        };
-
-        // Only update property_price and discount_percent if they are different from the current values
-        if (currentDetails.property_price !== payload.property_price || currentDetails.discount_percent !== payload.discount_percent) {
-            updates = {
-                ...updates,
-                property_price: payload.property_price,
-                discount_percent: payload.discount_percent || 0,
-            };
+        if (payload.property_price === undefined || payload.property_price === null || payload.amount === undefined || payload.amount === null || payload.discount_percent === undefined) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("Missing required fields");
         }
+
+        // Destructure for easier access to properties
+        const {
+            property_price: propertyPrice,
+            discount_percent: discountPercent = 0, // Default to 0 if not provided
+            amount,
+            project_id: projectId,
+        } = payload;
+
+        const {
+            amount_paid_till_now: amountPaidTillNow = 0,
+            no_of_part_payments: noOfPartPayments = 0,
+            property_price: currentPropertyPrice,
+            discount_percent: currentDiscountPercent = 0,
+        } = currentDetails;
+
+        // Calculate discount amount and final price after applying the discount
+        const discountAmount = (propertyPrice * discountPercent) / 100;
+        const priceAfterDiscount = propertyPrice - discountAmount;
+
+        // Update the amount paid till now and calculate new pending payment
+        const newAmountPaidTillNow = amountPaidTillNow + amount;
+        const newPendingPayment = priceAfterDiscount - newAmountPaidTillNow;
+
+        // Create date string for the payment
+        const dateString = new Date().toISOString().slice(0, 10);
+
+        // Prepare updates for payment details and part payments
+        let updates = {
+            pdUpdates: {
+                amount_paid_till_now: newAmountPaidTillNow,
+                pending_payment: newPendingPayment,
+                no_of_part_payments: noOfPartPayments + 1,
+                // Update property_price and discount_percent only if they are different
+                ...(currentPropertyPrice !== propertyPrice || currentDiscountPercent !== discountPercent) && {
+                    property_price: propertyPrice,
+                    discount_percent: discountPercent,
+                },
+            },
+            ppUpdates: {
+                project_id: projectId,
+                amount: amount,
+                date_of_pp_payment: dateString,
+            },
+        };
 
         return {
             updates,
-            newPendingPayment
+            newPendingPayment,
         };
     }
 
+    // async getBlockedList() {
+    //     try {
+    //         const ReceiptsData = await ReceiptsModel.findAll({
+    //             where: {
+    //                 receipt_status: "A" // Assuming "A" means "Approved" or similar
+    //             },
+    //             include: [
+    //                 {
+    //                     model: ProjectsModel, // Adjust model references as needed
+    //                     where: { status: "BLOCKED" },
+    //                     attributes: ['project_id', 'project_name', 'project_type'],
+    //                 },
+    //                 {
+    //                     model: PropertyDetailsModel, // Adjust model references as needed
+    //                     include: [
+    //                         {
+    //                             model: BlockedProjectsModel,
+    //                             attributes: ['date_of_blocked', 'no_of_days_blocked'],
+    //                         }
+    //                     ]
+    //                 },
+    //                 {
+    //                     model: Users,
+    //                     attributes: ['user_name'],
+    //                 }
+    //             ],
+    //         });
 
-    async getBlockedList() {
-        try {
-            const ReceiptsData = await ReceiptsModel.findAll({
-                where: {
-                    receipt_status: "A" // Assuming "A" means "Approved" or similar
-                },
-                include: [
-                    {
-                        model: Projects, // Adjust model references as needed
-                        where: { status: "BLOCKED" }
-                    },
-                    {
-                        model: PropertyDetails, // Adjust model references as needed
-                        include: [
-                            {
-                                model: BlockedProjects,
-                            }
-                        ]
-                    },
-                    {
-                        model: Users, // Adjust model references as needed
-                    }
-                ],
-            });
+    //         return ReceiptsData;
 
-            return ReceiptsData;
+    //     } catch (err) {
+    //         console.error("Error while getBlockedList:", err.message);
 
-        } catch (err) {
-            console.error("Error in getPartPaymentsList: ", err.message);
-            throw new Error("An error occurred while fetching part payments list.");
-        }
-    }
+    //         // If it's a known error, rethrow it for the router to handle
+    //         if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+    //             throw err;
+    //         }
+    //         // Log and throw a generic server error for unknown errors
+    //         throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+    //     }
+    // }
 }
 
 module.exports = ReceiptServices;
