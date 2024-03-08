@@ -128,11 +128,15 @@ router.get('/getRejectedReceiptsList', jwtHelperObj.verifyAccessToken, async (re
     }
 })
 
-router.get('/getPartPaymentHistoryList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.get('/getList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const reciptsServiceObj = new ReceiptServices();
-            const data = await reciptsServiceObj.getPartPaymentHistoryList()
+            const { statusFilter } = req.query;
+            if (!['PART PAYMENT', 'SOLD'].includes(statusFilter.toUpperCase())) {
+                throw new global.global.DATA.PLUGINS.httperrors.BadRequest('Invalid status filter');
+            }
+            const data = await reciptsServiceObj.getList(statusFilter.toUpperCase())
 
             res.send({
                 "status": 200,
@@ -296,12 +300,12 @@ router.put('/deleteParticularProjectPartPayments', jwtHelperObj.verifyAccessToke
     }
 })
 
-router.get('/getPartPaymentDeletedHistoryList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+router.get('/getDeletedHistoryList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const reciptsServiceObj = new ReceiptServices();
-            const { deletedFilter } = req.query
-            const data = await reciptsServiceObj.getPartPaymentDeletedHistoryList(deletedFilter.toUpperCase())
+            const { deletedFilter, statusFilter } = req.query
+            const data = await reciptsServiceObj.getDeletedHistoryList(deletedFilter.toUpperCase(), statusFilter.toUpperCase())
 
             res.send({
                 "status": 200,

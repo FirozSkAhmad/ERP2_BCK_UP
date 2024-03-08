@@ -8,7 +8,26 @@ class PayrollService {
 
     async addNewPayRoll(payrollDetails) {
         try {
-            this.validateRequiredFields(payrollDetails);
+            // this.validateRequiredFields(payrollDetails);
+
+            const requiredFields = ['name', 'role_type', 'incentives', 'salary'];
+
+
+            // Identify missing fields
+            const missingFields = requiredFields.filter(field => !payrollDetails.hasOwnProperty(field));
+
+            if (missingFields.length > 0) {
+                // Throw an error with a detailed message of missing fields
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields: ${missingFields.join(', ')}`);
+            }
+
+            const roleTypeData = await RoleTypesModel.findOne({ where: { role_type: payrollDetails.role_type.toUpperCase() } })
+            if (!roleTypeData) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid or non-existent role type");
+            }
+
+            payrollDetails.role_type = roleTypeData.role_type
+
             await PayrollModel.create({
                 ...payrollDetails
             })
@@ -28,17 +47,25 @@ class PayrollService {
         }
     }
 
-    validateRequiredFields(data) {
-        const requiredFields = ['name', 'role_type', 'incentives', 'salary'];
+    // async validateRequiredFields(data) {
 
-        // Identify missing fields
-        const missingFields = requiredFields.filter(field => !data.hasOwnProperty(field));
+    //     const requiredFields = ['name', 'role_type', 'incentives', 'salary'];
 
-        if (missingFields.length > 0) {
-            // Throw an error with a detailed message of missing fields
-            throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields: ${missingFields.join(', ')}`);
-        }
-    }
+
+    //     // Identify missing fields
+    //     const missingFields = requiredFields.filter(field => !data.hasOwnProperty(field));
+
+    //     if (missingFields.length > 0) {
+    //         // Throw an error with a detailed message of missing fields
+    //         throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields: ${missingFields.join(', ')}`);
+    //     }
+
+    //     const roleType = await RoleTypesModel.findOne({ where: { role_type: data.role_type } })
+    //     if (!roleType) {
+    //         throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid or non-existent role type");
+    //     }
+    // }
+
 
     // async editPayRollDetails(payroll_id, payrollDetails) {
     //     try {
@@ -100,8 +127,10 @@ class PayrollService {
             const roleTypes = await RoleTypesModel.findAll({
                 attributes: ['role_type']
             });
+            const data = roleTypes.map((roleType) => roleType.role_type)
+
             // Return the fetched role types
-            return roleTypes;
+            return data;
         }
         catch (err) {
             console.error("Error in getRoleTypes: ", err.message);

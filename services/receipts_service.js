@@ -434,11 +434,11 @@ class ReceiptServices {
         }
     }
 
-    async getPartPaymentHistoryList() {
+    async getList(statusFilter) {
         try {
             const ReceiptsData = await ReceiptsModel.findAll({
                 where: {
-                    receipt_status: "A", // Assuming "A" means "Approved" or similar
+                    receipt_status: "A",
                 },
                 attributes: ['receipt_id', 'client_name'], // Assuming you want to fetch 'client_name' from ReceiptsModel
                 include: [
@@ -454,11 +454,15 @@ class ReceiptServices {
                     {
                         model: ProjectsModel,
                         attributes: ['project_id', 'project_name', 'status'],
+                        where: {
+                            status: statusFilter
+                        },
                     }
                 ]
             });
 
             return ReceiptsData;
+
         } catch (err) {
             console.error("Error while getPartPaymentHistoryList:", err.message);
 
@@ -746,18 +750,16 @@ class ReceiptServices {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("The specified project does not exist.");
             }
 
-            await ProjectsModel.update({ status: "AVAILABLE" }, {
+            await ProjectsModel.update({
+                status: "AVAILABLE",
+                previous_status: project.status
+
+            }, {
                 where: { project_id },
                 transaction: transaction // Include transaction in the query
             });
 
             const dateString = new Date().toISOString().slice(0, 10); // Ensure dateString is defined
-
-            // Reset the no_of_part_payments for the specified project_id
-            // await PropertyDetailsModel.update({ no_of_part_payments: 0 }, {
-            //     where: { project_id: payload.project_id },
-            //     transaction: transaction // Use transaction
-            // });
 
             // Update PartPaymentHistoryModel to mark payments as deleted
             await PartPaymentHistoryModel.update({
@@ -766,6 +768,11 @@ class ReceiptServices {
             }, {
                 where: { project_id },
                 transaction: transaction // Use transaction
+            });
+
+            await PropertyDetailsModel.update({ completely_deleted: true, date_of_deletion: dateString }, {
+                where: { pd_id: payload.pd_id },
+                transaction: transaction
             });
 
             await transaction.commit(); // Commit the transaction
@@ -777,23 +784,26 @@ class ReceiptServices {
         }
     }
 
-    async getPartPaymentDeletedHistoryList(deletedFilter) {
+    async getDeletedHistoryList(deletedFilter, statusFilter) {
         try {
-            // Define the base query
             let propertyDetailsWhere = {};
+            let projectsWhere = {}
 
-            // Determine the condition based on the deletedFilter value
-            if (deletedFilter === "SEMI DELETED") {
+            // Dynamically set conditions based on filters
+            if (deletedFilter === "SEMI DELETED" && statusFilter == "PART PAYMENT") {
                 propertyDetailsWhere.semi_deleted = true;
-            } else if (deletedFilter === "COMPLETELY DELETED") {
+                projectsWhere.status = statusFilter;
+            } else if (deletedFilter === "COMPLETELY DELETED" && statusFilter == "PART PAYMENT") {
                 propertyDetailsWhere.completely_deleted = true;
+                projectsWhere.previous_status = statusFilter;
+            } else if (statusFilter == "SOLD") {
+                propertyDetailsWhere.completely_deleted = true;
+                projectsWhere.previous_status = statusFilter;
             }
 
             // Execute the query with the dynamic condition
             const ReceiptsData = await ReceiptsModel.findAll({
-                where: {
-                    receipt_status: "A", // "A" assumed to mean "Approved" or similar
-                },
+                where: { receipt_status: "A" },
                 attributes: ['receipt_id', 'client_name'],
                 include: [
                     {
@@ -804,6 +814,7 @@ class ReceiptServices {
                     {
                         model: ProjectsModel,
                         attributes: ['project_id', 'project_name', 'status'],
+                        where: projectsWhere,
                     }
                 ]
             });

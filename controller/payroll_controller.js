@@ -111,7 +111,7 @@ router.post("/addRoleType", jwtHelperObj.verifyAccessToken, async (req, res, nex
             }
 
             const payRollServiceObj = new PayrollService();
-            const message = await payRollServiceObj.addRoleType(role_type);
+            const message = await payRollServiceObj.addRoleType(role_type.toUpperCase());
             res.send({
                 "status": 201,
                 message

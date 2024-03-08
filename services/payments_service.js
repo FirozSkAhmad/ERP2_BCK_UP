@@ -125,7 +125,7 @@ class ReceiptServices {
             } else {
                 const currentDetails = await PropertyDetailsModel.findOne({
                     where: {
-                        project_id: payload.project_id,
+                        pd_id: payload.pd_id,
                         completely_deleted: false
                     },
                     include: [
@@ -203,7 +203,7 @@ class ReceiptServices {
         });
 
         await PropertyDetailsModel.update(updateDetails.updates.pdUpdates, {
-            where: { project_id: payload.project_id },
+            where: { pd_id: payload.pd_id },
             transaction: transaction
         });
 
@@ -234,13 +234,38 @@ class ReceiptServices {
     }
 
     async handleAvailableStatus(payload, transaction) {
-        await ProjectsModel.update({ status: "AVAILABLE" }, {
+        //Fetch the current status
+        const project = await ProjectsModel.findOne({
             where: { project_id: payload.project_id },
-            transaction: transaction
+            transaction: transaction,
         });
 
-        await PropertyDetailsModel.update({ completely_deleted: true }, {
+        // Check if project exists
+        if (!project) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest('Project not found');
+        }
+
+        // Update the project with the new status and set the previous status
+        await ProjectsModel.update({
+            status: "AVAILABLE",
+            previous_status: project.status
+        }, {
             where: { project_id: payload.project_id },
+            transaction: transaction,
+        });
+
+        const dateString = new Date().toISOString().slice(0, 10); // Ensure dateString is defined
+        // Update PartPaymentHistoryModel to mark payments as deleted
+        await PartPaymentHistoryModel.update({
+            deleted: true,
+            date_of_deletion: dateString
+        }, {
+            where: { project_id: payload.project_id },
+            transaction: transaction // Use transaction
+        });
+
+        await PropertyDetailsModel.update({ completely_deleted: true, date_of_deletion: dateString }, {
+            where: { pd_id: payload.pd_id },
             transaction: transaction
         });
     }

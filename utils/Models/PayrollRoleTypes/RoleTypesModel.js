@@ -1,6 +1,6 @@
 const Sequelize = require('sequelize')
 
-const RoleTypesModel =  global.DATA.CONNECTION.mysql.define("roletypesmodel",{
+const RoleTypesModel =  global.DATA.CONNECTION.mysql.define("payroll_roletypes",{
     id: {
         type: Sequelize.DataTypes.INTEGER,
         primaryKey: true,
