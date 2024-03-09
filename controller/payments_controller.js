@@ -59,27 +59,4 @@ router.post('/payPartPayment', jwtHelperObj.verifyAccessToken, async (req, res, 
     }
 })
 
-// router.get('/getBlockedList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
-//     try {
-//         const role = req.aud.split(":")[1];
-//         if (role === "SUPER ADMIN") {
-//             const paymentsServiceObj = new PaymentsServices();
-//             const data = await paymentsServiceObj.getBlockedList(req.body)
-
-//             res.send({
-//                 "status": 201,
-//                 "message": Constants.SUCCESS,
-//                 "data": data
-//             })
-//         } else {
-//             res.status(401).send({
-//                 "message": "Only SUPER ADMIN has access to getBlockedList",
-//             });
-//         }
-//     }
-//     catch (err) {
-//         next(err);
-//     }
-// })
-
 module.exports = router;

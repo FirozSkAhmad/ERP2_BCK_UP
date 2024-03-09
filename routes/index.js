@@ -10,6 +10,8 @@ const BulkUploadController = require('../controller/bulkupload_controller')
 const PaymentsController = require('../controller/payments_controller')
 const ExpensesController = require('../controller/expenses_controller')
 const MiscellaneousController = require('../controller/miscellaneous_controller')
+const CustomerController = require('../controller/customer_controller')
+const DiscountController = require('../controller/discount_controller')
 
 class IndexRoute {
     constructor(expressApp) {
@@ -29,6 +31,8 @@ class IndexRoute {
         this.app.use("/upload", BulkUploadController);
         this.app.use("/miscellaneous", MiscellaneousController);
         this.app.use("/expenses", ExpensesController);
+        this.app.use("/customers", CustomerController);
+        this.app.use("/discounts", DiscountController);
     }
 }
 

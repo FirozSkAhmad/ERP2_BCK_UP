@@ -21,6 +21,24 @@ router.get('/getExpenses', jwtHelperObj.verifyAccessToken, async (req, res, next
         next(err);
     }
 })
+
+router.get('/getPraticularCommissionHolderHistory', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
+    try {
+        const { commission_holder_id } = req.query
+        const expensesServiceObj = new ExpensesService()
+        const data = await expensesServiceObj.getPraticularCommissionHolderHistory(commission_holder_id)
+
+        res.send({
+            "status": 200,
+            "message": Constants.SUCCESS,
+            data
+        })
+    }
+    catch (err) {
+        next(err);
+    }
+})
+
 router.get('/getPraticularCommisionDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const { receipt_id, projectType } = req.query
@@ -38,61 +56,4 @@ router.get('/getPraticularCommisionDetails', jwtHelperObj.verifyAccessToken, asy
     }
 })
 
-router.get('/getCancledCommissions', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
-    try {
-        const projectsServiceObj = new CommissionService()
-        const data = await projectsServiceObj.getCancledCommissions()
-            .catch(err => {
-                console.log("Error occured", err.message);
-                throw err;
-            })
-
-        res.send({
-            "status": 200,
-            "message": Constants.SUCCESS,
-            "data": data
-        })
-    }
-    catch (err) {
-        next(err);
-    }
-})
-
-router.post("/validateCommission", jwtHelperObj.verifyAccessToken, async (req, res, next) => {
-    try {
-        const commissionServiceObj = new CommissionService();
-        const data = await commissionServiceObj.validateCommission(req.body).catch(err => {
-            console.log("Error occured", err.message);
-            throw err;
-        })
-
-        res.send({
-            "status": 200,
-            "message": Constants.SUCCESS,
-            "data": "COMMISSION VALIDATED SUCCESSFULLY"
-        })
-    }
-    catch (err) {
-        next(err);
-    }
-})
-
-router.post("/deleteComission", jwtHelperObj.verifyAccessToken, async (req, res, next) => {
-    try {
-        const commissionServiceObj = new CommissionService();
-        const data = await commissionServiceObj.cancelCommission(req.body).catch(err => {
-            console.log("Error occured", err.message);
-            throw err;
-        })
-
-        res.send({
-            "status": 200,
-            "message": Constants.SUCCESS,
-            "data": "COMMISSION DELETED"
-        })
-    }
-    catch (err) {
-        next(err);
-    }
-})
 module.exports = router;
