@@ -12,6 +12,8 @@ const ExpensesController = require('../controller/expenses_controller')
 const MiscellaneousController = require('../controller/miscellaneous_controller')
 const CustomerController = require('../controller/customer_controller')
 const DiscountController = require('../controller/discount_controller')
+const LeadsController = require('../controller/leads_controller')
+const OverviewController = require('../controller/overview_controller')
 
 class IndexRoute {
     constructor(expressApp) {
@@ -33,6 +35,8 @@ class IndexRoute {
         this.app.use("/expenses", ExpensesController);
         this.app.use("/customers", CustomerController);
         this.app.use("/discounts", DiscountController);
+        this.app.use("/leads", LeadsController);
+        this.app.use("/overview", OverviewController);
     }
 }
 
