@@ -28,56 +28,6 @@ router.post('/addNewPayRoll', jwtHelperObj.verifyAccessToken, async (req, res, n
     }
 })
 
-// Edit payroll details
-// router.post('/editPayRollDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
-//     try {
-//         const payRollServiceObj = new PayrollService();
-//         const { name, amount, role_type } = { ...req.body }
-//         const updatePayload = { name, amount, role_type }
-//         const data = await payRollServiceObj.editPayRollDetails(req.body.id, updatePayload);
-//         res.send({
-//             "status": 200,
-//             "message": Constants.SUCCESS
-//         })
-//     }
-//     catch (err) {
-//         next(err);
-//     }
-// })
-
-// // Get All Payroll details
-// router.get('/getPayRollDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
-//     try {
-//         const payRollServiceObj = new PayrollService();
-//         const data = await payRollServiceObj.getPayRollDetails();
-//         res.send({
-//             "status": 200,
-//             "message": Constants.SUCCESS,
-//             "data": data
-//         })
-
-//     }
-//     catch (err) {
-//         next(err);
-//     }
-// })
-
-// router.get('/getExpenses', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
-//     try {
-//         const payRollServiceObj = new PayrollService();
-//         const data = await payRollServiceObj.getExpenses();
-//         res.send({
-//             "status": 200,
-//             "message": Constants.SUCCESS,
-//             "data": data
-//         })
-
-//     }
-//     catch (err) {
-//         next(err);
-//     }
-// })
-
 router.get("/getRoleTypes", jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const role = req.aud.split(":")[1];

@@ -19,7 +19,7 @@ class ReceiptServices {
 
     }
 
-    async createReceipt(payload, commission_holder_id) {
+    async createReceipt(payload, commission_holder_id, role_type) {
         let transaction;
         try {
             transaction = await DATA.CONNECTION.mysql.transaction();
@@ -68,7 +68,7 @@ class ReceiptServices {
             }
             const commissionData = {
                 project_id: checkProject.project_id,
-                type_of_commission: payload.type_of_commission.toUpperCase(),
+                type_of_commission: role_type == "CHANNEL PARTNER" ? 'VALIDATION' : payload.type_of_commission.toUpperCase(),
                 total_commission: payload.total_commission || null,
                 commission_received_till_now: payload.commission_received_till_now || null,
             };

@@ -9,8 +9,9 @@ router.post('/createReceipt', jwtHelperObj.verifyAccessToken, async (req, res, n
     try {
         if (req.aud.split(":")[1] === "SALES PERSON" || req.aud.split(":")[1] === "CHANNEL PARTNER") {
             const commission_holder_id = req.aud.split(":")[0]
+            const role_type = req.aud.split(":")[1]
             const reciptsServiceObj = new ReceiptServices();
-            const data = await reciptsServiceObj.createReceipt(req.body, commission_holder_id)
+            const data = await reciptsServiceObj.createReceipt(req.body, commission_holder_id, role_type)
 
             res.send({
                 "status": 201,
