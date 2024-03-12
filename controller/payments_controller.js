@@ -13,7 +13,7 @@ router.get('/getPaymentsList', jwtHelperObj.verifyAccessToken, async (req, res, 
             if (!statusFilter) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Status filter is required");
             }
-            if (!["PART PAYMENT", "BLOCKED"].includes(statusFilter)) {
+            if (!["PART PAYMENT", "BLOCKED"].includes(statusFilter.toUpperCase())) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid Status Filter Provided");
             }
 
