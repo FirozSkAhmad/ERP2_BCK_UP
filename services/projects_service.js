@@ -551,7 +551,7 @@ class ProjectsService {
     async getStatusCount(projectType) {
         try {
 
-            const statuses = ['AVAILABLE', 'TOKEN', 'ADVANCE', 'PART-PAYMENT', 'BLOCK', 'SOLD'];
+            const statuses = ['AVAILABLE', 'TOKEN', 'ADVANCE', 'PART_PAYMENT', 'BLOCK', 'SOLD'];
             const counts = await Promise.all(statuses.map(async (status) => {
                 const count = await ProjectsModel.count({
                     where: {
