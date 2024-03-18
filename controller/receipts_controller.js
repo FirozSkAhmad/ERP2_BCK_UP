@@ -89,11 +89,10 @@ router.put('/validateReceipt/:approveOrReject', jwtHelperObj.verifyAccessToken, 
             }
 
             const receiptsServiceObj = new ReceiptServices();
-            const data = await receiptsServiceObj.validateReceipt(req.body, approveOrReject.toUpperCase());
+            const message = await receiptsServiceObj.validateReceipt(req.body, approveOrReject.toUpperCase());
             res.status(201).send({
                 "status": 201,
-                "message": Constants.SUCCESS,
-                "data": data
+                message
             });
         } else {
             res.status(401).send({
