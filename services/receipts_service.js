@@ -129,7 +129,7 @@ class ReceiptServices {
         const requiredFields = [];
         if (['TOKEN', 'ADVANCE'].includes(payload.status)) {
             requiredFields.push('ta_mode_of_payment', 'ta_amount');
-        } else if (payload.status === 'BLOCKED') {
+        } else if (payload.status === 'BLOCK') {
             requiredFields.push('no_of_days_blocked');
         }
 
@@ -153,7 +153,7 @@ class ReceiptServices {
             };
             const tokenOrAdvanceRecord = await TokenOrAdvanceHistoryModel.create(tokenOrAdvanceData, { transaction });
             taHistoryId = tokenOrAdvanceRecord.ta_history_id;
-        } else if (payload.status.toUpperCase() === 'BLOCKED') {
+        } else if (payload.status.toUpperCase() === 'BLOCK') {
             const blockedData = {
                 project_id: projectId,
                 date_of_blocked: dateString,
