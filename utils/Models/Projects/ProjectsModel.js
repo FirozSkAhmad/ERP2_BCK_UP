@@ -45,12 +45,12 @@ const ProjectsModel = global.DATA.CONNECTION.mysql.define("projects", {
         allowNull: false
     },
     previous_status: {
-        type: Sequelize.DataTypes.ENUM('AVAILABLE', 'TOKEN', 'ADVANCE', 'PART PAYMENT', 'BLOCKED', 'SOLD'),
+        type: Sequelize.DataTypes.ENUM('AVAILABLE', 'TOKEN', 'ADVANCE', 'PART PAYMENT', 'BLOCK', 'SOLD'),
         allowNull: true,
         defaultValue: null
     },
     status: {
-        type: Sequelize.DataTypes.ENUM('AVAILABLE', 'TOKEN', 'ADVANCE', 'PART PAYMENT', 'BLOCKED', 'SOLD'),
+        type: Sequelize.DataTypes.ENUM('AVAILABLE', 'TOKEN', 'ADVANCE', 'PART PAYMENT', 'BLOCK', 'SOLD'),
         allowNull: false,
         defaultValue: 'AVAILABLE'
     },

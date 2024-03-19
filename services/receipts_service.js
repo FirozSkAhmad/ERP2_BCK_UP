@@ -45,8 +45,8 @@ class ReceiptServices {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Receipt already created for current project");
             }
 
-            if (!['TOKEN', 'ADVANCE', 'BLOCKED'].includes(payload.status.toUpperCase())) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("Type of commission must be 'TOKEN', 'ADVANCE', 'BLOCKED'");
+            if (!['TOKEN', 'ADVANCE', 'BLOCK'].includes(payload.status.toUpperCase())) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Type of commission must be 'TOKEN', 'ADVANCE', 'BLOCK'");
             }
 
             // Validate payload for missing fields based on status
