@@ -23,8 +23,7 @@ router.get('/getHistory', jwtHelperObj.verifyAccessToken, async (req, res, next)
 })
 router.get('/getPraticularHistoryDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
-        const userId = req.aud.split(":")[0];
-        const { receipt_id, projectType } = req.query
+        const { userId, receipt_id, projectType } = req.query
         const historyServiceObj = new HistoryService()
         const Details = await historyServiceObj.getPraticularHistoryDetails(userId, receipt_id, projectType)
 
