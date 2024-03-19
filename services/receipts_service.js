@@ -92,7 +92,7 @@ class ReceiptServices {
             await transaction.commit();
             return { message: "Receipt created successfully", receipt_id: receiptRecord.receipt_id };
         } catch (err) {
-            console.error("Error in createNewProject: ", err.message);
+            console.error("Error in createReceipt: ", err.message);
 
             if (transaction) await transaction.rollback();
             // If it's a known error, rethrow it for the router to handle
