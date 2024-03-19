@@ -46,7 +46,7 @@ class HistoryService {
         }
     }
 
-    async getPraticularHistoryDetails(userId, receipt_id, projectType) {
+    async getPraticularHistoryDetails(commissionHolderId, receipt_id, projectType) {
         try {
             const excludeFields = {
                 APARTMENT: ['villa_number', 'plot_number', 'sq_yards', 'project_id', 'pid', 'previous_status', 'createdAt', 'updatedAt'],
@@ -63,7 +63,7 @@ class HistoryService {
                     where: {
                         receipt_id,
                         receipt_status: "A",
-                        commission_holder_id: userId
+                        commission_holder_id: commissionHolderId
                     },
                     attributes: ['receipt_id', 'client_name', 'client_phn_no', 'client_adhar_no'],
                     include: [{

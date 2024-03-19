@@ -23,9 +23,9 @@ router.get('/getHistory', jwtHelperObj.verifyAccessToken, async (req, res, next)
 })
 router.get('/getPraticularHistoryDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
-        const { userId, receipt_id, projectType } = req.query
+        const { commissionHolderId, receipt_id, projectType } = req.query
         const historyServiceObj = new HistoryService()
-        const Details = await historyServiceObj.getPraticularHistoryDetails(userId, receipt_id, projectType)
+        const Details = await historyServiceObj.getPraticularHistoryDetails(commissionHolderId, receipt_id, projectType)
 
         res.send({
             "status": 200,
