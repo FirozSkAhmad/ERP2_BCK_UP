@@ -74,21 +74,33 @@ class CommissionService {
                     attributes: [], // Intentionally exclude attributes but apply the condition
                     // required: false // This makes the inclusion a LEFT OUTER JOIN, which may or may not fit your needs
                 }],
-                group: ['user.user_id'], // Group by to ensure uniqueness, adjust as necessary
+                // group: ['user.user_id'], // Group by to ensure uniqueness, adjust as necessary
                 raw: true
             });
 
-            let result
+            let result;
             if (commissionFilter === "CP COMMISSION") {
-                result = response.map(item => ({
-                    channel_partner_id: item['user.channel_partner_id'],
-                    channel_partner_name: item['user.channel_partner_name']
-                }));
+                const uniqueChannelPartners = new Map();
+                response.forEach(item => {
+                    if (!uniqueChannelPartners.has(item['user.channel_partner_id'])) {
+                        uniqueChannelPartners.set(item['user.channel_partner_id'], {
+                            channel_partner_id: item['user.channel_partner_id'],
+                            channel_partner_name: item['user.channel_partner_name']
+                        });
+                    }
+                });
+                result = Array.from(uniqueChannelPartners.values());
             } else {
-                result = response.map(item => ({
-                    sales_person_id: item['user.sales_person_id'],
-                    sales_person_name: item['user.sales_person_name']
-                }));
+                const uniqueSalesPersons = new Map();
+                response.forEach(item => {
+                    if (!uniqueSalesPersons.has(item['user.sales_person_id'])) {
+                        uniqueSalesPersons.set(item['user.sales_person_id'], {
+                            sales_person_id: item['user.sales_person_id'],
+                            sales_person_name: item['user.sales_person_name']
+                        });
+                    }
+                });
+                result = Array.from(uniqueSalesPersons.values());
             }
 
             return result;
@@ -232,26 +244,26 @@ class CommissionService {
             if (commission_id === undefined || commission_id === null) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Required commission_id in req.body.");
             }
-    
+
             transaction = await global.DATA.CONNECTION.mysql.transaction();
-    
+
             // Fetch the current commission
             const commission = await CommissionsModel.findOne({
                 where: {
                     commission_id
                 }
             });
-    
+
             if (!commission) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Commission not found.");
             }
-    
+
             // Check if the new commission received till now exceeds total commission
             const newCommissionReceivedTillNow = commission.commission_recived_till_now + commission_amount;
             if (newCommissionReceivedTillNow > commission.total_commission) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Commission received exceeds the total commission.");
             }
-    
+
             // Update commission
             await CommissionsModel.update({ commission_recived_till_now: newCommissionReceivedTillNow }, {
                 where: {
@@ -259,10 +271,10 @@ class CommissionService {
                 },
                 transaction // Include the transaction object to ensure this operation is part of the transaction
             });
-    
+
             await transaction.commit();
             return "COMMISSION PAY SUCCESSFULLY PROCESSED";
-    
+
         } catch (err) {
             console.error("Error in payCommission: ", err.message);
             if (transaction) await transaction.rollback();
@@ -273,7 +285,7 @@ class CommissionService {
             throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
-    
+
 
     async getCancledCommissions() {
         try {
