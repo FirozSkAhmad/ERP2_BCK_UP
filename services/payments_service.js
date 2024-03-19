@@ -32,7 +32,7 @@ class ReceiptServices {
             };
 
             // Adding specific conditions based on the list type
-            if (statusFilter === 'BLOCKED') {
+            if (statusFilter === 'BLOCK') {
                 commonAttributes.include.push({
                     model: ProjectsModel, // Adjust model references as needed
                     where: { status: statusFilter },
@@ -145,7 +145,7 @@ class ReceiptServices {
                 }
 
                 switch (payload.status.toUpperCase()) {
-                    case "BLOCKED":
+                    case "BLOCK":
                         // Handle the logic for when the status is BLOCKED
                         await this.handleBlockedStatus(payload, currentDetails, transaction);
                         break;
