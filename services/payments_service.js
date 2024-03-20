@@ -272,8 +272,8 @@ class ReceiptServices {
     }
 
     calculateBlockedDetails(payload, currentDetails) {
-        const extraDays = payload.added_extra_days
-        const newNoOfDaysBlocked = currentDetails.BlockedProject.no_of_days_blocked + extraDays;
+        const extraDays = parseInt(payload.added_extra_days, 10)
+        const newNoOfDaysBlocked = parseInt(currentDetails.BlockedProject.no_of_days_blocked, 10) + extraDays;
         const newRemark = payload.remark || null;
 
         return {
@@ -309,12 +309,12 @@ class ReceiptServices {
         const discountAmount = (parseInt(propertyPrice, 10) * parseInt(discountPercent, 10) / 100);
         const priceAfterDiscount = parseInt(propertyPrice, 10) - discountAmount;
 
-        console.log("priceAfterDiscount",priceAfterDiscount)
+        console.log("priceAfterDiscount", priceAfterDiscount)
 
         // Update the amount paid till now and calculate new pending payment
         const newAmountPaidTillNow = amountPaidTillNow + parseInt(amount, 10);
         const newPendingPayment = priceAfterDiscount - newAmountPaidTillNow;
-        console.log("newPendingPayment",newPendingPayment)
+        console.log("newPendingPayment", newPendingPayment)
 
         // Create date string for the payment
         const dateString = new Date().toISOString().slice(0, 10);
