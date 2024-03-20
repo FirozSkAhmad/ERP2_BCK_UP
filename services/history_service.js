@@ -83,8 +83,12 @@ class HistoryService {
                     }]
                 }
             )
+            if (!null) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("no details with the given combination of filters");
 
-            return response;
+            }
+
+            return response
         }
         catch (err) {
             console.error("Error in getPraticularHistoryDetails: ", err.message);
