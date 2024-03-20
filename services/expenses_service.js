@@ -32,8 +32,8 @@ class ExpensesService {
                         model: CommissionsModel,
                         where: {
                             commission_recived_till_now: {
-                                [Sequelize.Op.gt]: 0 // Using the greater than (gt) operator to check for values greater than 0
-                            }
+                                [Sequelize.Op.lt]: Sequelize.literal('`total_commission`')
+                              }
                         },
                         attributes: [],
                     }],
