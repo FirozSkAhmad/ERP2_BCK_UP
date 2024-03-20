@@ -309,9 +309,12 @@ class ReceiptServices {
         const discountAmount = (parseInt(propertyPrice, 10) * parseInt(discountPercent, 10) / 100);
         const priceAfterDiscount = parseInt(propertyPrice, 10) - discountAmount;
 
+        console.log("priceAfterDiscount",priceAfterDiscount)
+
         // Update the amount paid till now and calculate new pending payment
         const newAmountPaidTillNow = amountPaidTillNow + parseInt(amount, 10);
         const newPendingPayment = priceAfterDiscount - newAmountPaidTillNow;
+        console.log("newPendingPayment",newPendingPayment)
 
         // Create date string for the payment
         const dateString = new Date().toISOString().slice(0, 10);
