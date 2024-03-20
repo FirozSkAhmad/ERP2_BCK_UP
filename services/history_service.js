@@ -83,7 +83,7 @@ class HistoryService {
                     }]
                 }
             )
-            if (!null) {
+            if (!response) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("no details with the given combination of filters");
 
             }
