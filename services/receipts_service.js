@@ -39,11 +39,20 @@ class ReceiptServices {
             // Check if a receipt for the project already exists
             const checkReceiptAlready = await ReceiptsModel.findOne({
                 where: { project_id: checkProject.project_id },
+                include: [{
+                    model: PropertyDetailsModel,
+                    where: {
+                        completely_deleted: false
+                    },
+                }],
                 transaction
             });
             if (checkReceiptAlready) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Receipt already created for current project");
             }
+
+            console.log(payload.status)
+            console.log(payload)
 
             if (!['TOKEN', 'ADVANCE', 'BLOCK'].includes(payload.status.toUpperCase())) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Type of commission must be 'TOKEN', 'ADVANCE', 'BLOCK'");
@@ -127,9 +136,9 @@ class ReceiptServices {
 
     validatePayloadForStatus(payload) {
         const requiredFields = [];
-        if (['TOKEN', 'ADVANCE'].includes(payload.status)) {
+        if (['TOKEN', 'ADVANCE'].includes(payload.status.toUpperCase())) {
             requiredFields.push('ta_mode_of_payment', 'ta_amount');
-        } else if (payload.status === 'BLOCK') {
+        } else if (payload.status.toUpperCase() === 'BLOCK') {
             requiredFields.push('no_of_days_blocked');
         }
 
