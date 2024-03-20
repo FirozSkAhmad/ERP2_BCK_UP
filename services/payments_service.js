@@ -227,6 +227,7 @@ class ReceiptServices {
             transaction: transaction
         });
 
+
         await PropertyDetailsModel.update(updateDetails.updates.pdUpdates, {
             where: { pd_id: payload.pd_id },
             transaction: transaction
@@ -305,11 +306,11 @@ class ReceiptServices {
         } = currentDetails;
 
         // Calculate discount amount and final price after applying the discount
-        const discountAmount = (propertyPrice * discountPercent) / 100;
-        const priceAfterDiscount = propertyPrice - discountAmount;
+        const discountAmount = (parseInt(propertyPrice, 10) * parseInt(discountPercent, 10) / 100);
+        const priceAfterDiscount = parseInt(propertyPrice, 10) - discountAmount;
 
         // Update the amount paid till now and calculate new pending payment
-        const newAmountPaidTillNow = amountPaidTillNow + amount;
+        const newAmountPaidTillNow = amountPaidTillNow + parseInt(amount, 10);
         const newPendingPayment = priceAfterDiscount - newAmountPaidTillNow;
 
         // Create date string for the payment
