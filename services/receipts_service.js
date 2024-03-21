@@ -605,12 +605,12 @@ class ReceiptServices {
             }
 
             // Ensure the new amount is positive
-            if (payload.new_amount <= 0) {
+            if (parseInt(payload.new_amount, 10) <= 0) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('New amount must be greater than zero.');
             }
 
             // Check for same amount submission
-            if (payload.new_amount === CheckParticularPartPayment.amount) {
+            if (parseInt(payload.new_amount, 10) === parseInt(CheckParticularPartPayment.amount, 10)) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest('The new amount is the same as the current amount. Please provide a different amount to update.');
             }
 
@@ -620,12 +620,12 @@ class ReceiptServices {
 
             let newAmountPaidTillNow;
             let newPendingPayment;
-            if (payload.new_amount > CheckParticularPartPayment.amount) {
-                newAmountPaidTillNow = propertyDetails.amount_paid_till_now + (payload.new_amount - CheckParticularPartPayment.amount)
-                newPendingPayment = propertyDetails.pending_payment - (payload.new_amount - CheckParticularPartPayment.amount)
-            } else if (payload.new_amount < CheckParticularPartPayment.amount) {
-                newAmountPaidTillNow = propertyDetails.amount_paid_till_now - (CheckParticularPartPayment.amount - payload.new_amount)
-                newPendingPayment = propertyDetails.pending_payment + (CheckParticularPartPayment.amount - payload.new_amount)
+            if (parseInt(payload.new_amount, 10) > parseInt(CheckParticularPartPayment.amount, 10)) {
+                newAmountPaidTillNow = propertyDetails.amount_paid_till_now + (parseInt(payload.new_amount, 10) - parseInt(CheckParticularPartPayment.amount, 10))
+                newPendingPayment = propertyDetails.pending_payment - (parseInt(payload.new_amount, 10) - parseInt(CheckParticularPartPayment.amount, 10))
+            } else if (parseInt(payload.new_amount, 10) < parseInt(CheckParticularPartPayment.amount, 10)) {
+                newAmountPaidTillNow = propertyDetails.amount_paid_till_now - (parseInt(CheckParticularPartPayment.amount, 10) - parseInt(payload.new_amount, 10))
+                newPendingPayment = propertyDetails.pending_payment + (parseInt(CheckParticularPartPayment.amount, 10) - parseInt(payload.new_amount, 10))
             }
 
             await PropertyDetailsModel.update({
