@@ -453,7 +453,8 @@ class ReceiptServices {
                         where: {
                             no_of_part_payments: {
                                 [Sequelize.Op.gt]: 0 // Ensures no_of_part_payments is greater than 0
-                            }
+                            },
+                            completely_deleted: false
                         },
                         attributes: [], // No attributes included from PropertyDetailsModel
                     },
