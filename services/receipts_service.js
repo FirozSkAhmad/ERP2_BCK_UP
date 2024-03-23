@@ -485,7 +485,8 @@ class ReceiptServices {
         try {
             const ParticularPartPaymentHistory = await PartPaymentHistoryModel.findAll({
                 where: {
-                    project_id
+                    project_id,
+                    deleted: false
                 },
                 attributes: ['pp_id', 'project_id', 'amount', 'date_of_pp_payment']
             });
