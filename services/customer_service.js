@@ -64,6 +64,7 @@ class CustomerService {
                 FARM_LAND: ['tower_number', 'flat_number', 'villa_number', 'project_id', 'pid', 'previous_status', 'createdAt', 'updatedAt']
             };
 
+
             // Get the list of fields to exclude for the given project type
             const fieldsToExclude = excludeFields[projectType.toUpperCase()] || [];
 
@@ -71,7 +72,7 @@ class CustomerService {
                 {
                     where: {
                         receipt_id,
-                        receipt_status: "A",
+                        // receipt_status: "A",
                     },
                     attributes: ['receipt_id', 'client_name', 'client_phn_no', 'client_adhar_no'],
                     include: [{
