@@ -18,7 +18,7 @@ const PartPaymentHistoryModel = global.DATA.CONNECTION.mysql.define("PartPayment
     previous_amount: {
         type: Sequelize.DataTypes.STRING(100),
         allowNull: true,
-        default: null
+        defaultValue: null
     },
     date_of_pp_payment: {
         type: Sequelize.DataTypes.STRING(100),
@@ -27,11 +27,11 @@ const PartPaymentHistoryModel = global.DATA.CONNECTION.mysql.define("PartPayment
     editied_date_of_pp_payment: {
         type: Sequelize.DataTypes.STRING(100),
         allowNull: true,
-        default: null
+        defaultValue: null
     },
     deleted:{
         type: Sequelize.DataTypes.BOOLEAN,
-        default: false
+        defaultValue: false
     },
     date_of_deletion: {
         type: Sequelize.DataTypes.STRING(100),
