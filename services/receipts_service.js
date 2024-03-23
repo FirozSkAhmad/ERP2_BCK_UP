@@ -742,7 +742,7 @@ class ReceiptServices {
         }
     }
 
-    async deleteParticularProjectPartPayments(project_id,pd_id) {
+    async deleteParticularProjectPartPayments(project_id, pd_id) {
         let transaction;
         try {
             // Start a transaction
@@ -755,6 +755,15 @@ class ReceiptServices {
 
             if (!ProjectData) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("The specified project does not exist.");
+            }
+
+            const PropertyDetails = await PropertyDetailsModel.findOne({
+                where: { pd_id, completely_deleted: true },
+                transaction: transaction // Include transaction in the query
+            });
+
+            if (PropertyDetails) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("The Entire project is already deleted");
             }
 
             await ProjectsModel.update({
@@ -778,7 +787,7 @@ class ReceiptServices {
             });
 
             await PropertyDetailsModel.update({ completely_deleted: true, date_of_deletion: dateString }, {
-                where: { pd_id},
+                where: { pd_id },
                 transaction: transaction
             });
 
