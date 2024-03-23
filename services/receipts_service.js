@@ -759,7 +759,7 @@ class ReceiptServices {
 
             await ProjectsModel.update({
                 status: "AVAILABLE",
-                previous_status: project.status
+                previous_status: ProjectData.status
 
             }, {
                 where: { project_id },
