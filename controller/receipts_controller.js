@@ -305,7 +305,7 @@ router.get('/getDeletedHistoryList', jwtHelperObj.verifyAccessToken, async (req,
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const reciptsServiceObj = new ReceiptServices();
             const { deletedFilter, statusFilter } = req.query
-            const data = await reciptsServiceObj.getDeletedHistoryList(deletedFilter.toUpperCase(), statusFilter.toUpperCase())
+            const data = await reciptsServiceObj.getDeletedHistoryList(deletedFilter, statusFilter)
 
             res.send({
                 "status": 200,

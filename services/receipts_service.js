@@ -795,17 +795,19 @@ class ReceiptServices {
             let propertyDetailsWhere = {};
             let projectsWhere = {}
 
-            // Dynamically set conditions based on filters
-            if (deletedFilter === "SEMI DELETED" && statusFilter == "PART PAYMENT") {
-                propertyDetailsWhere.semi_deleted = true;
-                projectsWhere.status = statusFilter;
-            } else if (deletedFilter === "COMPLETELY DELETED" && statusFilter == "PART PAYMENT") {
+            if (statusFilter.toUpperCase() == "SOLD") {
                 propertyDetailsWhere.completely_deleted = true;
                 projectsWhere.previous_status = statusFilter;
-            } else if (statusFilter == "SOLD") {
-                propertyDetailsWhere.completely_deleted = true;
-                projectsWhere.previous_status = statusFilter;
+            } else if (statusFilter.toUpperCase() == "PART PAYMENT") {
+                if (deletedFilter.toUpperCase() === "SEMI DELETED") {
+                    propertyDetailsWhere.semi_deleted = true;
+                    projectsWhere.status = statusFilter;
+                } else if (deletedFilter.toUpperCase() === "COMPLETELY DELETED") {
+                    propertyDetailsWhere.completely_deleted = true;
+                    projectsWhere.previous_status = statusFilter;
+                }
             }
+
 
             // Execute the query with the dynamic condition
             const ReceiptsData = await ReceiptsModel.findAll({
