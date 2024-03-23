@@ -455,7 +455,7 @@ class ReceiptServices {
                                 [Sequelize.Op.gt]: 0 // Ensures no_of_part_payments is greater than 0
                             }
                         },
-                        attributes: [], // No attributes included from PropertyDetailsModel
+                        attributes: ['pd_id'], // No attributes included from PropertyDetailsModel
                     },
                     {
                         model: ProjectsModel,
@@ -742,7 +742,7 @@ class ReceiptServices {
         }
     }
 
-    async deleteParticularProjectPartPayments(project_id) {
+    async deleteParticularProjectPartPayments(project_id,pd_id) {
         let transaction;
         try {
             // Start a transaction
@@ -778,7 +778,7 @@ class ReceiptServices {
             });
 
             await PropertyDetailsModel.update({ completely_deleted: true, date_of_deletion: dateString }, {
-                where: { pd_id: payload.pd_id },
+                where: { pd_id},
                 transaction: transaction
             });
 

@@ -279,9 +279,9 @@ router.put('/deleteParticularPartPaymentAmount', jwtHelperObj.verifyAccessToken,
 router.put('/deleteParticularProjectPartPayments', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN") {
-            const { project_id } = req.query
+            const { project_id, pd_id } = req.query
             const reciptsServiceObj = new ReceiptServices();
-            const message = await reciptsServiceObj.deleteParticularProjectPartPayments(project_id)
+            const message = await reciptsServiceObj.deleteParticularProjectPartPayments(project_id, pd_id)
 
             res.send({
                 "status": 201,
