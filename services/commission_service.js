@@ -189,7 +189,7 @@ class CommissionService {
                         receipt_id,
                         receipt_status: "A",
                     },
-                    attributes: ['receipt_id', 'client_name', 'client_phn_no', 'client_adhar_no'],
+                    attributes: ['receipt_id', 'client_name', 'client_phn_no', 'client_adhar_no','date_of_onboard'],
                     include: [{
                         model: UsersModel,
                         attributes: [['user_id', 'sales_person_id'], ['user_name', 'sales_person_name']],
