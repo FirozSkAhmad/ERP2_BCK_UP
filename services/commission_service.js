@@ -189,7 +189,7 @@ class CommissionService {
                         receipt_id,
                         receipt_status: "A",
                     },
-                    attributes: ['receipt_id', 'client_name', 'client_phn_no', 'client_adhar_no','date_of_onboard'],
+                    attributes: ['receipt_id', 'client_name', 'client_phn_no', 'client_adhar_no', 'date_of_onboard'],
                     include: [{
                         model: UsersModel,
                         attributes: [['user_id', 'sales_person_id'], ['user_name', 'sales_person_name']],
@@ -259,7 +259,7 @@ class CommissionService {
             }
 
             // Check if the new commission received till now exceeds total commission
-            const newCommissionReceivedTillNow = commission.commission_recived_till_now + commission_amount;
+            const newCommissionReceivedTillNow = commission.commission_recived_till_now + parseInt(commission_amount, 10);
             if (newCommissionReceivedTillNow > commission.total_commission) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Commission received exceeds the total commission.");
             }
