@@ -16,7 +16,7 @@ const LeadsModel = global.DATA.CONNECTION.mysql.define("leads", {
         allowNull: false
     },
     ph_no: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.STRING(100),
         allowNull: false
     },
     location: {
