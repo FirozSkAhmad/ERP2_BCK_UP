@@ -8,6 +8,9 @@ const Constants = require('../utils/Constants/response_messages')
 router.get('/getCustomersList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const { customersFilter } = req.query
+        if (!customersFilter) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("missing customersFilter.")
+        }
         const customerServiceObj = new CustomerService()
         const data = await customerServiceObj.getCustomersList(customersFilter.toUpperCase())
 
@@ -25,6 +28,9 @@ router.get('/getCustomersList', jwtHelperObj.verifyAccessToken, async (req, res,
 router.get('/getPraticularCustomerDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const { receipt_id, projectType } = req.query
+        if (!receipt_id || !projectType) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("missing receipt_id/projectType.")
+        }
         const customerServiceObj = new CustomerService()
         const data = await customerServiceObj.getPraticularCustomerDetails(receipt_id, projectType.toUpperCase())
 

@@ -7,44 +7,47 @@ class PayrollService {
     }
 
     async addNewPayRoll(payrollDetails) {
-        try {
-            // this.validateRequiredFields(payrollDetails);
+        return await global.DATA.CONNECTION.mysql.transaction(async (t) => {
+            try {
+                // this.validateRequiredFields(payrollDetails);
 
-            const requiredFields = ['name', 'role_type', 'incentives', 'salary'];
+                const requiredFields = ['name', 'role_type', 'incentives', 'salary'];
 
 
-            // Identify missing fields
-            const missingFields = requiredFields.filter(field => !payrollDetails.hasOwnProperty(field));
+                // Identify missing fields
+                const missingFields = requiredFields.filter(field => !payrollDetails.hasOwnProperty(field));
 
-            if (missingFields.length > 0) {
-                // Throw an error with a detailed message of missing fields
-                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields: ${missingFields.join(', ')}`);
+                if (missingFields.length > 0) {
+                    // Throw an error with a detailed message of missing fields
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields: ${missingFields.join(', ')}`);
+                }
+
+                const roleTypeData = await RoleTypesModel.findOne({ where: { role_type: payrollDetails.role_type.toUpperCase() } })
+                if (!roleTypeData) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid or non-existent role type");
+                }
+
+                payrollDetails.role_type = roleTypeData.role_type
+
+                await PayrollModel.create({
+                    ...payrollDetails
+                }, { transaction: t })
+
+                return "Added Payroll Successfully";
+
             }
+            catch (err) {
+                console.error("Error in addNewPayRoll: ", err.message);
 
-            const roleTypeData = await RoleTypesModel.findOne({ where: { role_type: payrollDetails.role_type.toUpperCase() } })
-            if (!roleTypeData) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid or non-existent role type");
+                // If it's a known error, rethrow it for the router to handle
+                if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                    throw err;
+                } else {
+                    // Log and throw a generic server error for unknown errors
+                    throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+                }
             }
-
-            payrollDetails.role_type = roleTypeData.role_type
-
-            await PayrollModel.create({
-                ...payrollDetails
-            })
-
-            return "Added Payroll Successfully";
-
-        }
-        catch (err) {
-            console.error("Error in addNewPayRoll: ", err.message);
-
-            // If it's a known error, rethrow it for the router to handle
-            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
-                throw err;
-            }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
-        }
+        });
     }
 
     // async validateRequiredFields(data) {
@@ -138,9 +141,10 @@ class PayrollService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -156,9 +160,10 @@ class PayrollService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 

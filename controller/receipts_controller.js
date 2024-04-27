@@ -11,12 +11,11 @@ router.post('/createReceipt', jwtHelperObj.verifyAccessToken, async (req, res, n
             const commission_holder_id = req.aud.split(":")[0]
             const role_type = req.aud.split(":")[1]
             const reciptsServiceObj = new ReceiptServices();
-            const data = await reciptsServiceObj.createReceipt(req.body, commission_holder_id, role_type)
+            const details = await reciptsServiceObj.createReceipt(req.body, commission_holder_id, role_type)
 
             res.send({
                 "status": 201,
-                "message": Constants.SUCCESS,
-                "data": data
+                details
             })
         } else {
             res.send({
@@ -38,7 +37,7 @@ router.get('/getPendingReceiptsList', jwtHelperObj.verifyAccessToken, async (req
             const data = await reciptsServiceObj.getPendingReceiptsList()
 
             res.send({
-                "status": 201,
+                "status": 200,
                 "message": Constants.SUCCESS,
                 "data": data
             })
@@ -58,11 +57,14 @@ router.get('/getParticularReceiptData', jwtHelperObj.verifyAccessToken, async (r
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const { receipt_id } = req.query
+            if (!receipt_id) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("missing receipt_id.")
+            }
             const reciptsServiceObj = new ReceiptServices();
             const data = await reciptsServiceObj.getParticularReceiptData(receipt_id)
 
             res.send({
-                "status": 201,
+                "status": 200,
                 "message": Constants.SUCCESS,
                 "data": data
             })
@@ -90,8 +92,8 @@ router.put('/validateReceipt/:approveOrReject', jwtHelperObj.verifyAccessToken, 
 
             const receiptsServiceObj = new ReceiptServices();
             const message = await receiptsServiceObj.validateReceipt(req.body, approveOrReject.toUpperCase());
-            res.status(201).send({
-                "status": 201,
+            res.send({
+                "status": 200,
                 message
             });
         } else {
@@ -134,7 +136,7 @@ router.get('/getList', jwtHelperObj.verifyAccessToken, async (req, res, next) =>
             const reciptsServiceObj = new ReceiptServices();
             const { statusFilter } = req.query;
             if (!['PART PAYMENT', 'SOLD'].includes(statusFilter.toUpperCase())) {
-                throw new global.global.DATA.PLUGINS.httperrors.BadRequest('Invalid status filter');
+                throw new global.global.DATA.PLUGINS.httperrors.BadRequest("Invalid status filter, must be 'PART PAYMENT'or 'SOLD'");
             }
             const data = await reciptsServiceObj.getList(statusFilter.toUpperCase())
 
@@ -161,6 +163,9 @@ router.get('/getParticularPartPaymentHistoryList', jwtHelperObj.verifyAccessToke
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const reciptsServiceObj = new ReceiptServices();
             const { project_id } = req.query;
+            if (!project_id) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("missing project_id.")
+            }
             const data = await reciptsServiceObj.getParticularPartPaymentHistoryList(project_id)
 
             res.send({
@@ -185,6 +190,9 @@ router.get('/getParticularPartPaymentHistoryDetails', jwtHelperObj.verifyAccessT
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const reciptsServiceObj = new ReceiptServices();
             const { receipt_id, pp_id } = req.query
+            if (!receipt_id || !pp_id) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("missing receipt_id/pp_id.")
+            }
             const data = await reciptsServiceObj.getParticularPartPaymentHistoryDetails(receipt_id, pp_id)
 
             res.send({
@@ -209,6 +217,9 @@ router.get('/getParticularPartPaymentHistory', jwtHelperObj.verifyAccessToken, a
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const reciptsServiceObj = new ReceiptServices();
             const { project_id } = req.query;
+            if (!project_id) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("missing project_id.")
+            }
             const data = await reciptsServiceObj.getParticularPartPaymentHistory(project_id)
 
             res.send({
@@ -236,7 +247,6 @@ router.put('/editParticularPartPaymentAmount', jwtHelperObj.verifyAccessToken, a
 
             res.send({
                 "status": 201,
-                "message": Constants.SUCCESS,
                 message
             })
         } else {
@@ -257,11 +267,13 @@ router.put('/deleteParticularPartPaymentAmount', jwtHelperObj.verifyAccessToken,
         if (req.aud.split(":")[1] === "SUPER ADMIN") {
             const reciptsServiceObj = new ReceiptServices();
             const { pp_id, pd_id } = req.query
+            if (!pp_id || pd_id) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("missing pd_id/pp_id.")
+            }
             const message = await reciptsServiceObj.deleteParticularPartPaymentAmount(pp_id, pd_id)
 
             res.send({
                 "status": 201,
-                "message": Constants.SUCCESS,
                 message
             })
         } else {
@@ -280,6 +292,9 @@ router.put('/deleteParticularProjectPartPayments', jwtHelperObj.verifyAccessToke
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN") {
             const { project_id, pd_id } = req.query
+            if (!project_id || pd_id) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("missing pd_id/project_id.")
+            }
             const reciptsServiceObj = new ReceiptServices();
             const message = await reciptsServiceObj.deleteParticularProjectPartPayments(project_id, pd_id)
 
@@ -305,6 +320,9 @@ router.get('/getDeletedHistoryList', jwtHelperObj.verifyAccessToken, async (req,
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const reciptsServiceObj = new ReceiptServices();
             const { deletedFilter, statusFilter } = req.query
+            if (!statusFilter || deletedFilter) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("missing statusFilter/deletedFilter.")
+            }
             const data = await reciptsServiceObj.getDeletedHistoryList(deletedFilter, statusFilter)
 
             res.send({
@@ -328,10 +346,13 @@ router.get('/getParticularPartPaymentDeletedHistoryList', jwtHelperObj.verifyAcc
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const reciptsServiceObj = new ReceiptServices();
             const { project_id } = req.query;
+            if (!project_id) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("missing project_id.")
+            }
             const data = await reciptsServiceObj.getParticularPartPaymentDeletedHistoryList(project_id)
 
             res.send({
-                "status": 201,
+                "status": 200,
                 "message": Constants.SUCCESS,
                 "data": data
             })

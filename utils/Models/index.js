@@ -8,22 +8,22 @@ class MySqlModels {
 
     async loadModels() {
         try {
-            console.log(`Loading models from directory: ${__dirname}`);
+            // console.log(`Loading models from directory: ${__dirname}`);
             const modelDirectories = await fs.promises.readdir(__dirname);
 
             for (const directory of modelDirectories) {
                 const directoryPath = path.join(__dirname, directory);
                 const stat = await fs.promises.stat(directoryPath);
 
-                console.log(`Processing directory: ${directoryPath}`);
+                // console.log(`Processing directory: ${directoryPath}`);
                 if (stat.isDirectory()) {
                     const files = await fs.promises.readdir(directoryPath);
 
                     for (const file of files) {
-                        console.log(`Found file: ${file}`);
+                        // console.log(`Found file: ${file}`);
                         if (file.endsWith('.js')) {
                             const modelPath = path.join(directoryPath, file);
-                            console.log(`Loading model from file: ${modelPath}`);
+                            // console.log(`Loading model from file: ${modelPath}`);
                             const model = require(modelPath);
                             if (model && model.name) {
                                 console.log('Model loaded:', model.name);

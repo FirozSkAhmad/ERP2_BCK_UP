@@ -110,79 +110,114 @@ class ReceiptServices {
     }
 
     constructPayloadIdentifier(payload) {
-        let identifier = `${payload.project_type.toUpperCase()}_${payload.project_name}`;
-        switch (payload.project_type.toUpperCase()) {
-            case 'APARTMENT':
-                identifier += `_${payload.tower_number}_${payload.flat_number}`;
-                break;
-            case 'VILLA':
-                identifier += `_${payload.villa_number}`;
-                break;
-            case 'PLOT':
-            case 'FARM_LAND':
-                identifier += `_${payload.plot_number}`;
-                if (payload.project_type === 'FARM_LAND') {
-                    identifier += `_${payload.sq_yards}`;
-                }
-                break;
-            default:
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid Project Type");
+        try {
+            let identifier = `${payload.project_type.toUpperCase()}_${payload.project_name}`;
+            switch (payload.project_type.toUpperCase()) {
+                case 'APARTMENT':
+                    identifier += `_${payload.tower_number}_${payload.flat_number}`;
+                    break;
+                case 'VILLA':
+                    identifier += `_${payload.villa_number}`;
+                    break;
+                case 'PLOT':
+                case 'FARM_LAND':
+                    identifier += `_${payload.plot_number}`;
+                    if (payload.project_type === 'FARM_LAND') {
+                        identifier += `_${payload.sq_yards}`;
+                    }
+                    break;
+                default:
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid Project Type");
+            }
+            return identifier;
+        } catch (err) {
+            console.error("Error in constructPayloadIdentifier: ", err.message);
+
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
-        return identifier;
     }
 
     validatePayloadForStatus(payload) {
-        const requiredFields = [];
-        if (['TOKEN', 'ADVANCE'].includes(payload.status.toUpperCase())) {
-            requiredFields.push('ta_mode_of_payment', 'ta_amount');
-        } else if (payload.status.toUpperCase() === 'BLOCK') {
-            requiredFields.push('no_of_days_blocked');
-        }
+        try {
+            const requiredFields = [];
+            if (['TOKEN', 'ADVANCE'].includes(payload.status.toUpperCase())) {
+                requiredFields.push('ta_mode_of_payment', 'ta_amount');
+            } else if (payload.status.toUpperCase() === 'BLOCK') {
+                requiredFields.push('no_of_days_blocked');
+            }
 
-        const missingFields = requiredFields.filter(field => !payload[field]);
-        if (missingFields.length > 0) {
-            throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields for status ${payload.status}: ${missingFields.join(', ')}`);
+            const missingFields = requiredFields.filter(field => !payload[field]);
+            if (missingFields.length > 0) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields for status ${payload.status}: ${missingFields.join(', ')}`);
+            }
+        }
+        catch (err) {
+            console.error("Error in validatePayloadForStatus: ", err.message);
+
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
     }
 
     async handleStatusRelatedOperations(payload, projectId, transaction) {
-        const dateString = new Date().toISOString().slice(0, 10);
+        try {
+            const dateString = new Date().toISOString().slice(0, 10);
 
-        // Handling based on status
-        let taHistoryId = null, blockedId = null;
-        if (['TOKEN', 'ADVANCE'].includes(payload.status.toUpperCase())) {
-            const tokenOrAdvanceData = {
+            // Handling based on status
+            let taHistoryId = null, blockedId = null;
+            if (['TOKEN', 'ADVANCE'].includes(payload.status.toUpperCase())) {
+                const tokenOrAdvanceData = {
+                    project_id: projectId,
+                    ta_mode_of_payment: payload.ta_mode_of_payment.toUpperCase(),
+                    ta_amount: payload.ta_amount,
+                    data_of_ta_payment: dateString
+                };
+                const tokenOrAdvanceRecord = await TokenOrAdvanceHistoryModel.create(tokenOrAdvanceData, { transaction });
+                taHistoryId = tokenOrAdvanceRecord.ta_history_id;
+            } else if (payload.status.toUpperCase() === 'BLOCK') {
+                const blockedData = {
+                    project_id: projectId,
+                    date_of_blocked: dateString,
+                    no_of_days_blocked: payload.no_of_days_blocked,
+                    remark: payload.remark || null,
+                };
+                const blockedRecord = await BlockedProjectsModel.create(blockedData, { transaction });
+                blockedId = blockedRecord.blocked_id;
+            }
+
+            // Assuming property details and commissions are always created or updated:
+            const propertyDetails = {
                 project_id: projectId,
-                ta_mode_of_payment: payload.ta_mode_of_payment.toUpperCase(),
-                ta_amount: payload.ta_amount,
-                data_of_ta_payment: dateString
+                property_price: payload.property_price || null,
+                discount_percent: payload.discount_percent || 0,
+                amount_paid_till_now: payload.ta_amount || null,
+                pending_payment: this.calculatePendingPayment(payload),
+                ta_history_id: taHistoryId, // from TOKEN or ADVANCE handling
+                blocked_id: blockedId, // from BLOCKED handling
             };
-            const tokenOrAdvanceRecord = await TokenOrAdvanceHistoryModel.create(tokenOrAdvanceData, { transaction });
-            taHistoryId = tokenOrAdvanceRecord.ta_history_id;
-        } else if (payload.status.toUpperCase() === 'BLOCK') {
-            const blockedData = {
-                project_id: projectId,
-                date_of_blocked: dateString,
-                no_of_days_blocked: payload.no_of_days_blocked,
-                remark: payload.remark || null,
-            };
-            const blockedRecord = await BlockedProjectsModel.create(blockedData, { transaction });
-            blockedId = blockedRecord.blocked_id;
+
+            const PropertyDetails = await PropertyDetailsModel.create(propertyDetails, { transaction });
+            return PropertyDetails.pd_id;
         }
-
-        // Assuming property details and commissions are always created or updated:
-        const propertyDetails = {
-            project_id: projectId,
-            property_price: payload.property_price || null,
-            discount_percent: payload.discount_percent || 0,
-            amount_paid_till_now: payload.ta_amount || null,
-            pending_payment: this.calculatePendingPayment(payload),
-            ta_history_id: taHistoryId, // from TOKEN or ADVANCE handling
-            blocked_id: blockedId, // from BLOCKED handling
-        };
-
-        const PropertyDetails = await PropertyDetailsModel.create(propertyDetails, { transaction });
-        return PropertyDetails.pd_id;
+        catch (err) {
+            console.error("Error in handleStatusRelatedOperations: ", err.message);
+            if (transaction) await transaction.rollback();
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
+        }
     }
 
     calculatePendingPayment(payload) {
@@ -224,8 +259,9 @@ class ReceiptServices {
 
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -248,7 +284,7 @@ class ReceiptServices {
             );
 
             if (!receiptData) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid Receipt ID");
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`No record found with the provided receipt id: ${payload.receipt_id}`);
             }
 
             let ta_amount
@@ -325,7 +361,7 @@ class ReceiptServices {
                         { where: { pd_id: receiptData.pd_id }, transaction: t }
                     );
                 } else {
-                    throw new Error("Invalid operation.");
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid operation.");
                 }
             });
 
@@ -335,16 +371,27 @@ class ReceiptServices {
 
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
     validateApprovalPayload(payload) {
-        const requiredFields = ['property_price', 'discount_percent', 'total_commission'];
-        const missingFields = requiredFields.filter(field => payload[field] === undefined);
-        if (missingFields.length > 0) {
-            throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields: ${missingFields.join(', ')}`);
+        try {
+            const requiredFields = ['property_price', 'discount_percent', 'total_commission'];
+            const missingFields = requiredFields.filter(field => payload[field] === undefined);
+            if (missingFields.length > 0) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields: ${missingFields.join(', ')}`);
+            }
+        } catch (err) {
+            console.error("Error in validateApprovalPayload: ", err.message);
+
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
     }
 
@@ -434,9 +481,10 @@ class ReceiptServices {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -475,9 +523,10 @@ class ReceiptServices {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -498,9 +547,10 @@ class ReceiptServices {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -563,9 +613,10 @@ class ReceiptServices {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -574,15 +625,10 @@ class ReceiptServices {
         try {
             // Start a transaction
             transaction = await DATA.CONNECTION.mysql.transaction();
-            if (!payload.pp_id) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest('pp_id is required.');
+            if (!payload.pp_id || !payload.pd_id || !payload.new_amount) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Missing parameter pp_id/pd_id/new_amount");
             }
-            if (!payload.pd_id) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest('pd_id is required.');
-            }
-            if (!payload.new_amount) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest('new_amount is required.');
-            }
+
             // Use findOne to get a single record
             const CheckParticularPartPayment = await PartPaymentHistoryModel.findOne({
                 where: {
@@ -591,7 +637,7 @@ class ReceiptServices {
             });
 
             if (!CheckParticularPartPayment) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest('No such payment record exists.');
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('No such payment record exists with given pp_id.');
             }
 
             const ProjectData = await ProjectsModel.findOne({
@@ -658,9 +704,10 @@ class ReceiptServices {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Custom error handling can be adjusted as needed
+                throw new Error("An internal server error occurred while updating part payment.");
             }
-            // Custom error handling can be adjusted as needed
-            throw new Error("An internal server error occurred while updating part payment.");
         }
     }
 
@@ -677,7 +724,7 @@ class ReceiptServices {
             });
 
             if (!partPaymentDetails) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest('No such payment record exists.');
+                throw new global.DATA.PLUGINS.httperrors.BadRequest('No such payment record exists with given pp_id');
             }
 
             const project_id = partPaymentDetails.project_id;
@@ -738,7 +785,13 @@ class ReceiptServices {
             if (transaction) {
                 await transaction.rollback();
             }
-            throw new Error("An internal server error occurred while updating part payment.");
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                // Custom error handling can be adjusted as needed
+                throw new Error("An internal server error occurred while deleteParticularPartPaymentAmount.");
+            }
         }
     }
 
@@ -796,7 +849,13 @@ class ReceiptServices {
         } catch (err) {
             console.error("Error in deleteParticularProjectPartPayments:", err.message);
             if (transaction) await transaction.rollback(); // Rollback the transaction in case of an error
-            throw new Error("An internal server error occurred while updating part payment.");
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                // Custom error handling can be adjusted as needed
+                throw new Error("An internal server error occurred while deleteParticularProjectPartPayments.");
+            }
         }
     }
 
@@ -841,8 +900,13 @@ class ReceiptServices {
 
         } catch (err) {
             console.error("Error while getPartPaymentDeletedHistoryList", err.message);
-            // Handle errors appropriately
-            throw new Error("An internal server error occurred while fetching part payment deleted history.");
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                // Custom error handling can be adjusted as needed
+                throw new Error("An internal server error occurred.");
+            }
         }
     }
 
@@ -863,9 +927,10 @@ class ReceiptServices {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 }

@@ -39,9 +39,10 @@ class DiscountService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -49,7 +50,7 @@ class DiscountService {
         try {
 
             if (!['APARTMENT', 'VILLA', 'PLOT', 'FARM_LAND'].includes(projectType)) {
-                throw new new global.DATA.PLUGINS.httperrors.BadRequest("incorrect projectType");
+                throw new new global.DATA.PLUGINS.httperrors.BadRequest(`incorrect projectType: ${projectType}, it should one of the value in ['APARTMENT', 'VILLA', 'PLOT', 'FARM_LAND']`);
             }
 
             const excludeFields = {
@@ -109,9 +110,11 @@ class DiscountService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+
         }
     }
 }

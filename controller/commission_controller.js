@@ -8,6 +8,9 @@ const Constants = require('../utils/Constants/response_messages')
 router.get('/getCommissionHoldersList', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const { commissionFilter } = req.query
+        if (!commissionFilter) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("missing commissionFilter.")
+        }
         const commissionServiceObj = new CommissionService()
         const data = await commissionServiceObj.getCommissionHoldersList(commissionFilter.toUpperCase())
 
@@ -25,6 +28,9 @@ router.get('/getCommissionHoldersList', jwtHelperObj.verifyAccessToken, async (r
 router.get('/getPraticularCommissionHolderHistory', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const { commission_holder_id, commissionFilter } = req.query
+        if (!commission_holder_id || !commissionFilter) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("missing commission_holder_id/commissionFilter.")
+        }
         const commissionServiceObj = new CommissionService()
         const data = await commissionServiceObj.getPraticularCommissionHolderHistory(commission_holder_id, commissionFilter.toUpperCase())
 
@@ -42,6 +48,9 @@ router.get('/getPraticularCommissionHolderHistory', jwtHelperObj.verifyAccessTok
 router.get('/getPraticularCommissionDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const { receipt_id, projectType } = req.query
+        if (!receipt_id || !projectType) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("missing receipt_id/projectType.")
+        }
         const commissionServiceObj = new CommissionService()
         const data = await commissionServiceObj.getPraticularCommissionDetails(receipt_id, projectType.toUpperCase())
 
@@ -59,13 +68,15 @@ router.get('/getPraticularCommissionDetails', jwtHelperObj.verifyAccessToken, as
 router.put('/payCommission', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const { commission_id, commission_amount } = req.body;
+        if (!commission_id || !commission_amount) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("missing commission_id/commission_amount.")
+        }
         const commissionServiceObj = new CommissionService()
-        const data = await commissionServiceObj.payCommission(commission_id, commission_amount)
+        const message = await commissionServiceObj.payCommission(commission_id, commission_amount)
 
         res.send({
-            "status": 200,
-            "message": Constants.SUCCESS,
-            data
+            "status": 201,
+            message
         })
     }
     catch (err) {
@@ -76,6 +87,9 @@ router.get('/getPraticularHistoryDetails', jwtHelperObj.verifyAccessToken, async
     try {
         const userId = req.aud.split(":")[0];
         const { receipt_id, projectType } = req.query
+        if (!receipt_id || !projectType) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("missing receipt_id/projectType.")
+        }
         const historyServiceObj = new HistoryService()
         const Details = await historyServiceObj.getPraticularHistoryDetails(userId, receipt_id, projectType)
 

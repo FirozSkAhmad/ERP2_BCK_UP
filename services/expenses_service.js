@@ -33,7 +33,7 @@ class ExpensesService {
                         where: {
                             commission_recived_till_now: {
                                 [Sequelize.Op.lt]: Sequelize.literal('`total_commission`')
-                              }
+                            }
                         },
                         attributes: [],
                     }],
@@ -88,9 +88,10 @@ class ExpensesService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -125,9 +126,10 @@ class ExpensesService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -176,9 +178,10 @@ class ExpensesService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 }

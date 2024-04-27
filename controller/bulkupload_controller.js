@@ -23,6 +23,9 @@ router.post("/bulkUpload", jwtHelperObj.verifyAccessToken, upload.single('file')
             }
 
             const { project_type } = req.body;
+            if (!project_type) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("required project_type")
+            }
             const bulkUploadServiceObj = new BulkUploadService();
             const result = await bulkUploadServiceObj.processCsvFile(req.file.buffer, project_type.toUpperCase());
             res.json(result);

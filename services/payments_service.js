@@ -56,7 +56,7 @@ class ReceiptServices {
                     attributes: ['pending_payment'],
                 });
             } else {
-                throw new Error("Invalid list type specified");
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid list type specified");
             }
 
             // Execute query with dynamically constructed attributes
@@ -69,9 +69,10 @@ class ReceiptServices {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -141,7 +142,7 @@ class ReceiptServices {
 
 
                 if (!currentDetails) {
-                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Property details not found.");
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest(`Property details not found with the given project_id: ${payload.project_id}`);
                 }
 
                 switch (payload.status.toUpperCase()) {
@@ -164,6 +165,7 @@ class ReceiptServices {
             }
 
             await transaction.commit();
+
             return "PAYMENT SUCCESSFULLY PROCESSED";
 
         } catch (err) {
@@ -172,176 +174,243 @@ class ReceiptServices {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
     async handleBlockedStatus(payload, currentDetails, transaction) {
+        try {
+            if (payload.added_extra_days === undefined || payload.added_extra_days === null) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("Required Extra days value to increase block days.");
+            }
 
-        if (payload.added_extra_days === undefined || payload.added_extra_days === null) {
-            throw new global.DATA.PLUGINS.httperrors.BadRequest("Required Extra days value to increase block days.");
+            const updateDetails = this.calculateBlockedDetails(payload, currentDetails);
+
+            await BlockedProjectsModel.update(updateDetails.updates, {
+                where: { blocked_id: currentDetails.blocked_id },
+                transaction: transaction
+            });
+        } catch (err) {
+            console.error("Error in handleBlockedStatus: ", err.message);
+            if (transaction) await transaction.rollback();
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
-
-        const updateDetails = this.calculateBlockedDetails(payload, currentDetails);
-
-        await BlockedProjectsModel.update(updateDetails.updates, {
-            where: { blocked_id: currentDetails.blocked_id },
-            transaction: transaction
-        });
     }
 
     async handleSoldStatus(payload, currentDetails, transaction) {
-        const updateDetails = this.calculatePaymentDetails(payload, currentDetails);
+        try {
+            const updateDetails = this.calculatePaymentDetails(payload, currentDetails);
 
-        if (updateDetails.newPendingPayment !== 0) {
-            throw global.DATA.PLUGINS.httperrors.BadRequest("To change status to SOLD, remaining payment should be zero.");
+            if (updateDetails.newPendingPayment !== 0) {
+                return {
+                    "status": 400,
+                    "message": `To change status to SOLD, remaining payment should be zero.`,
+                }
+                // throw global.DATA.PLUGINS.httperrors.BadRequest("To change status to SOLD, remaining payment should be zero.");
+            }
+
+            await PartPaymentHistoryModel.create(updateDetails.updates.ppUpdates, {
+                transaction: transaction
+            });
+
+            await PropertyDetailsModel.update(updateDetails.updates.pdUpdates, {
+                where: { pd_id: payload.pd_id },
+                transaction: transaction
+            });
+
+            await ProjectsModel.update({ status: "SOLD" }, {
+                where: { project_id: payload.project_id },
+                transaction: transaction
+            });
+        } catch (err) {
+            console.error("Error in handleSoldStatus: ", err.message);
+            if (transaction) await transaction.rollback();
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
-
-        await PartPaymentHistoryModel.create(updateDetails.updates.ppUpdates, {
-            transaction: transaction
-        });
-
-        await PropertyDetailsModel.update(updateDetails.updates.pdUpdates, {
-            where: { pd_id: payload.pd_id },
-            transaction: transaction
-        });
-
-        await ProjectsModel.update({ status: "SOLD" }, {
-            where: { project_id: payload.project_id },
-            transaction: transaction
-        });
     }
 
     async handlePartPaymentStatus(payload, currentDetails, transaction) {
-        const updateDetails = this.calculatePaymentDetails(payload, currentDetails);
+        try {
+            const updateDetails = this.calculatePaymentDetails(payload, currentDetails);
 
-        if (currentDetails.status !== payload.status.toUpperCase()) {
-            await ProjectsModel.update({ status: "PART PAYMENT" }, {
-                where: { project_id: currentDetails.project_id },
+            if (currentDetails.status !== payload.status.toUpperCase()) {
+                await ProjectsModel.update({ status: "PART PAYMENT" }, {
+                    where: { project_id: currentDetails.project_id },
+                    transaction: transaction
+                });
+            }
+
+            await PartPaymentHistoryModel.create(updateDetails.updates.ppUpdates, {
                 transaction: transaction
             });
+
+
+            await PropertyDetailsModel.update(updateDetails.updates.pdUpdates, {
+                where: { pd_id: payload.pd_id },
+                transaction: transaction
+            });
+        } catch (err) {
+            console.error("Error in handlePartPaymentStatus: ", err.message);
+            if (transaction) await transaction.rollback();
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
-
-        await PartPaymentHistoryModel.create(updateDetails.updates.ppUpdates, {
-            transaction: transaction
-        });
-
-
-        await PropertyDetailsModel.update(updateDetails.updates.pdUpdates, {
-            where: { pd_id: payload.pd_id },
-            transaction: transaction
-        });
     }
 
     async handleAvailableStatus(payload, transaction) {
-        //Fetch the current status
-        const project = await ProjectsModel.findOne({
-            where: { project_id: payload.project_id },
-            transaction: transaction,
-        });
+        try {
+            //Fetch the current status
+            const project = await ProjectsModel.findOne({
+                where: { project_id: payload.project_id },
+                transaction: transaction,
+            });
 
-        // Check if project exists
-        if (!project) {
-            throw new global.DATA.PLUGINS.httperrors.BadRequest('Project not found');
+            // Check if project exists
+            if (!project) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Project not found with the given project_id: ${payload.project_id}`);
+            }
+
+            // Update the project with the new status and set the previous status
+            await ProjectsModel.update({
+                status: "AVAILABLE",
+                previous_status: project.status
+            }, {
+                where: { project_id: payload.project_id },
+                transaction: transaction,
+            });
+
+            const dateString = new Date().toISOString().slice(0, 10); // Ensure dateString is defined
+            // Update PartPaymentHistoryModel to mark payments as deleted
+            await PartPaymentHistoryModel.update({
+                deleted: true,
+                date_of_deletion: dateString
+            }, {
+                where: { project_id: payload.project_id },
+                transaction: transaction // Use transaction
+            });
+
+            await PropertyDetailsModel.update({ completely_deleted: true, date_of_deletion: dateString }, {
+                where: { pd_id: payload.pd_id },
+                transaction: transaction
+            });
+        } catch (err) {
+            console.error("Error in handleAvailableStatus: ", err.message);
+            if (transaction) await transaction.rollback();
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
-
-        // Update the project with the new status and set the previous status
-        await ProjectsModel.update({
-            status: "AVAILABLE",
-            previous_status: project.status
-        }, {
-            where: { project_id: payload.project_id },
-            transaction: transaction,
-        });
-
-        const dateString = new Date().toISOString().slice(0, 10); // Ensure dateString is defined
-        // Update PartPaymentHistoryModel to mark payments as deleted
-        await PartPaymentHistoryModel.update({
-            deleted: true,
-            date_of_deletion: dateString
-        }, {
-            where: { project_id: payload.project_id },
-            transaction: transaction // Use transaction
-        });
-
-        await PropertyDetailsModel.update({ completely_deleted: true, date_of_deletion: dateString }, {
-            where: { pd_id: payload.pd_id },
-            transaction: transaction
-        });
     }
 
     calculateBlockedDetails(payload, currentDetails) {
-        const extraDays = parseInt(payload.added_extra_days, 10)
-        const newNoOfDaysBlocked = parseInt(currentDetails.BlockedProject.no_of_days_blocked, 10) + extraDays;
-        const newRemark = payload.remark || null;
+        try {
+            const extraDays = parseInt(payload.added_extra_days, 10)
+            const newNoOfDaysBlocked = parseInt(currentDetails.BlockedProject.no_of_days_blocked, 10) + extraDays;
+            const newRemark = payload.remark || null;
 
-        return {
-            updates: {
-                no_of_days_blocked: newNoOfDaysBlocked,
-                remark: newRemark
+            return {
+                updates: {
+                    no_of_days_blocked: newNoOfDaysBlocked,
+                    remark: newRemark
+                }
+            };
+        } catch (err) {
+            console.error("Error in calculateBlockedDetails: ", err.message);
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-        };
+        }
     }
 
     calculatePaymentDetails(payload, currentDetails) {
+        try {
+            if (payload.property_price === undefined || payload.property_price === null || payload.amount === undefined || payload.amount === null || payload.discount_percent === undefined) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields property_price, amount, discount_percent .`);
+            }
 
-        if (payload.property_price === undefined || payload.property_price === null || payload.amount === undefined || payload.amount === null || payload.discount_percent === undefined) {
-            throw new global.DATA.PLUGINS.httperrors.BadRequest("Missing required fields");
-        }
-
-        // Destructure for easier access to properties
-        const {
-            property_price: propertyPrice,
-            discount_percent: discountPercent = 0, // Default to 0 if not provided
-            amount,
-            project_id: projectId,
-        } = payload;
-
-        const {
-            amount_paid_till_now: amountPaidTillNow = 0,
-            no_of_part_payments: noOfPartPayments = 0,
-            property_price: currentPropertyPrice,
-            discount_percent: currentDiscountPercent = 0,
-        } = currentDetails;
-
-        // Calculate discount amount and final price after applying the discount
-        const discountAmount = (parseInt(propertyPrice, 10) * parseInt(discountPercent, 10) / 100);
-        const priceAfterDiscount = parseInt(propertyPrice, 10) - discountAmount;
-
-        console.log("priceAfterDiscount", priceAfterDiscount)
-
-        // Update the amount paid till now and calculate new pending payment
-        const newAmountPaidTillNow = amountPaidTillNow + parseInt(amount, 10);
-        const newPendingPayment = priceAfterDiscount - newAmountPaidTillNow;
-        console.log("newPendingPayment", newPendingPayment)
-
-        // Create date string for the payment
-        const dateString = new Date().toISOString().slice(0, 10);
-
-        // Prepare updates for payment details and part payments
-        let updates = {
-            pdUpdates: {
-                amount_paid_till_now: newAmountPaidTillNow,
-                pending_payment: newPendingPayment,
-                no_of_part_payments: noOfPartPayments + 1,
-                // Update property_price and discount_percent only if they are different
-                ...(currentPropertyPrice !== propertyPrice || currentDiscountPercent !== discountPercent) && {
-                    property_price: propertyPrice,
-                    discount_percent: discountPercent,
-                },
-            },
-            ppUpdates: {
+            // Destructure for easier access to properties
+            const {
+                property_price: propertyPrice,
+                discount_percent: discountPercent = 0, // Default to 0 if not provided
+                amount,
                 project_id: projectId,
-                amount: amount,
-                date_of_pp_payment: dateString,
-            },
-        };
+            } = payload;
 
-        return {
-            updates,
-            newPendingPayment,
-        };
+            const {
+                amount_paid_till_now: amountPaidTillNow = 0,
+                no_of_part_payments: noOfPartPayments = 0,
+                property_price: currentPropertyPrice,
+                discount_percent: currentDiscountPercent = 0,
+            } = currentDetails;
+
+            // Calculate discount amount and final price after applying the discount
+            const discountAmount = (parseInt(propertyPrice, 10) * parseInt(discountPercent, 10) / 100);
+            const priceAfterDiscount = parseInt(propertyPrice, 10) - discountAmount;
+
+            // console.log("priceAfterDiscount", priceAfterDiscount)
+
+            // Update the amount paid till now and calculate new pending payment
+            const newAmountPaidTillNow = amountPaidTillNow + parseInt(amount, 10);
+            const newPendingPayment = priceAfterDiscount - newAmountPaidTillNow;
+            // console.log("newPendingPayment", newPendingPayment)
+
+            // Create date string for the payment
+            const dateString = new Date().toISOString().slice(0, 10);
+
+            // Prepare updates for payment details and part payments
+            let updates = {
+                pdUpdates: {
+                    amount_paid_till_now: newAmountPaidTillNow,
+                    pending_payment: newPendingPayment,
+                    no_of_part_payments: noOfPartPayments + 1,
+                    // Update property_price and discount_percent only if they are different
+                    ...(currentPropertyPrice !== propertyPrice || currentDiscountPercent !== discountPercent) && {
+                        property_price: propertyPrice,
+                        discount_percent: discountPercent,
+                    },
+                },
+                ppUpdates: {
+                    project_id: projectId,
+                    amount: amount,
+                    date_of_pp_payment: dateString,
+                },
+            };
+
+            return {
+                updates,
+                newPendingPayment,
+            };
+        } catch (err) {
+            console.error("Error in calculatePaymentDetails: ", err.message);
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
+        }
     }
 
     // async getBlockedList() {

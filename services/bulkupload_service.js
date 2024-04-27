@@ -8,8 +8,20 @@ class BulkUpload {
     }
 
     async processCsvFile(buffer, type) {
-        const results = await this.parseCsv(buffer);
-        return this.uploadDataBasedOnType(type, results);
+        try {
+            const results = await this.parseCsv(buffer);
+            return this.uploadDataBasedOnType(type, results);
+        }
+        catch (err) {
+            console.error('processCsvFile error:', err.message);
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
+        }
     }
 
     parseCsv(buffer) {
@@ -27,7 +39,19 @@ class BulkUpload {
     }
 
     async uploadDataBasedOnType(type, data) {
-        return this.bulkInsert(ProjectsModel, data, type);
+        try {
+            return this.bulkInsert(ProjectsModel, data, type);
+        }
+        catch (err) {
+            console.error('uploadDataBasedOnType error:', err.message);
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
+        }
     }
 
     async bulkInsert(Model, data, type) {
@@ -50,29 +74,62 @@ class BulkUpload {
                 await Model.bulkCreate(preparedData, { transaction: t });
             });
             return { status: 200, message: `${data.length} ${type} data added successfully.` };
-        } catch (error) {
-            console.error('Bulk insert error:', error);
-            throw error;
+        } catch (err) {
+            console.error('Bulk insert error:', err.message);
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
     }
 
     validateRequiredFields(data, type) {
-        const requiredFields = {
-            APARTMENT: ['Project Name', 'Tower Number', 'Flat Number'],
-            VILLA: ['Project Name', 'Villa Number'],
-            PLOT: ['Project Name', 'Plot Number'],
-            FARM_LAND: ['Project Name', 'Plot Number', 'Sq.yards'],
-        };
-
-        const missingFields = data.some(item => {
-            const fields = requiredFields[type];
-            return fields.some(field => !item[field]);
-        });
-
-        if (missingFields) {
-            throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields for type ${type}`);
+        try {
+            const requiredFields = {
+                APARTMENT: ['Project Name', 'Tower Number', 'Flat Number'],
+                VILLA: ['Project Name', 'Villa Number'],
+                PLOT: ['Project Name', 'Plot Number'],
+                FARM_LAND: ['Project Name', 'Plot Number', 'Sq.yards'],
+            };
+    
+            const typeFields = requiredFields[type];
+            if (!typeFields) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Unsupported type ${type}`);
+            }
+    
+            const errors = [];
+    
+            data.forEach(item => {
+                const itemFields = Object.keys(item);
+                const missingFields = typeFields.filter(field => !item.hasOwnProperty(field));
+                const extraFields = itemFields.filter(field => !typeFields.includes(field));
+    
+                if (missingFields.length > 0) {
+                    errors.push(`Missing required fields: ${missingFields.join(', ')}`);
+                }
+                if (extraFields.length > 0) {
+                    errors.push(`Extra fields provided: ${extraFields.join(', ')}`);
+                }
+            });
+    
+            if (errors.length > 0) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Validation errors for type ${type}: ${errors.join('; ')}`);
+            }
+        } catch (err) {
+            console.error('Error in validateRequiredFields:', err.message);
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
     }
+    
 
     generatePayloadIdentifier(item, type) {
         switch (type) {

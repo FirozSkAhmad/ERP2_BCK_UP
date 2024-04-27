@@ -24,6 +24,9 @@ router.get('/getDiscountsList', jwtHelperObj.verifyAccessToken, async (req, res,
 router.get('/getPraticularDiscountDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const { receipt_id, projectType } = req.query
+        if (!receipt_id || !projectType) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("missing receipt_id/projectType.")
+        }
         const discountServiceObj = new DiscountService()
         const data = await discountServiceObj.getPraticularDiscountDetails(receipt_id, projectType.toUpperCase())
 

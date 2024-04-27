@@ -6,78 +6,83 @@ const _ = require('lodash');
 const { Op } = require('sequelize');
 
 class UserService {
-    constructor() {
+    constructor(io) {
+        this.io = io;
         this.jwtObject = new JWTHelper();
     }
 
     async createUser(userdetails) {
-        try {
-            const { email_id, password, confirmpassword, role_type, user_name } = userdetails;
+        return await global.DATA.CONNECTION.mysql.transaction(async (t) => {
+            try {
+                const { email_id, password, confirmpassword, role_type, user_name } = userdetails;
 
-            // Check if email already exists with statuses 'NV' or 'A'
-            const existingUser = await UsersModel.findOne({
-                where: {
-                    email_id: email_id,
-                    status: {
-                        [Op.or]: ['NV', 'A']
+                // Check if email already exists with statuses 'NV' or 'A'
+                const existingUser = await UsersModel.findOne({
+                    where: {
+                        email_id: email_id,
+                        status: {
+                            [Op.or]: ['NV', 'A']
+                        }
                     }
+                });
+
+                if (existingUser) {
+                    const errorMessages = {
+                        NV: "Given EmailId Already Register, But Might Not Approved Yet !",
+                        A: "USER ALREADY IN USE WITH GIVEN EMAIL ID"
+                    };
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest(errorMessages[existingUser.status]);
                 }
-            });
 
-            if (existingUser) {
-                const errorMessages = {
-                    NV: "Given EmailId Already Register, But Might Not Approved Yet !",
-                    A: "USER ALREADY IN USE WITH GIVEN EMAIL ID"
-                };
-                throw new global.DATA.PLUGINS.httperrors.BadRequest(errorMessages[existingUser.status]);
-            }
-
-            if (password !== confirmpassword) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("PASSWORDS DOES NOT MATCH");
-            }
-
-            const salt = await global.DATA.PLUGINS.bcrypt.genSalt(10);
-            const hashedPassword = await global.DATA.PLUGINS.bcrypt.hash(password, salt);
-
-            let additionalFields = {};
-            if (role_type.toUpperCase() === 'CHANNEL PARTNER') {
-                const { address, contact_no, pancard_no, bank_ac_no, bussiness_experience } = userdetails;
-                if (!address || !contact_no || !pancard_no || !bank_ac_no || !bussiness_experience) {
-                    throw new global.DATA.PLUGINS.httperrors.BadRequest("All fields (address, contact_no, pancard_no, bank_ac_no, bussiness_experience) are required for CHANNEL PARTNER");
+                if (password !== confirmpassword) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("PASSWORDS DOES NOT MATCH");
                 }
-                additionalFields = { address, contact_no, pancard_no, bank_ac_no, bussiness_experience };
-            } else {
-                additionalFields = {
-                    address: null,
-                    contact_no: null,
-                    pancard_no: null,
-                    bank_ac_no: null,
-                    bussiness_experience: null
+
+                const salt = await global.DATA.PLUGINS.bcrypt.genSalt(10);
+                const hashedPassword = await global.DATA.PLUGINS.bcrypt.hash(password, salt);
+
+                let additionalFields = {};
+                if (role_type.toUpperCase() === 'CHANNEL PARTNER') {
+                    const { address, contact_no, pancard_no, bank_ac_no, bussiness_experience } = userdetails;
+                    if (!address || !contact_no || !pancard_no || !bank_ac_no || !bussiness_experience) {
+                        throw new global.DATA.PLUGINS.httperrors.BadRequest("All fields (address, contact_no, pancard_no, bank_ac_no, bussiness_experience) are required for CHANNEL PARTNER");
+                    }
+                    additionalFields = { address, contact_no, pancard_no, bank_ac_no, bussiness_experience };
+                } else {
+                    additionalFields = {
+                        address: null,
+                        contact_no: null,
+                        pancard_no: null,
+                        bank_ac_no: null,
+                        bussiness_experience: null
+                    };
+                }
+
+                const currentDate = new Date().toISOString().slice(0, 10); // Simplified date handling
+
+                const userPayload = {
+                    user_name,
+                    email_id,
+                    password: hashedPassword,
+                    role_type: role_type.toUpperCase(),
+                    status: "NV",
+                    date_of_signUp: currentDate,
+                    ...additionalFields
                 };
+
+                const newUser = await UsersModel.create(userPayload, { transaction: t });
+                // Emit an event after user creation
+                this.io.emit('new-user', { message: `New user registered: ${newUser.user_name}` });
+                return newUser;
+            } catch (err) {
+                console.error("Error in createUser: ", err.message);
+                if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                    throw err;
+                } else {
+                    throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+                }
             }
-
-            const currentDate = new Date().toISOString().slice(0, 10); // Simplified date handling
-
-            const userPayload = {
-                user_name,
-                email_id,
-                password: hashedPassword,
-                role_type: role_type.toUpperCase(),
-                status: "NV",
-                date_of_signUp: currentDate,
-                ...additionalFields
-            };
-
-            const newUser = await UsersModel.create(userPayload);
-
-            return newUser;
-        } catch (err) {
-            console.error("Error in createUser: ", err.message);
-            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
-                throw err;
-            }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
-        }
+        });
     }
 
 
@@ -89,13 +94,16 @@ class UserService {
                 }
             })
 
+            if (!userData) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("No user exists with given emailId")
+            }
+
             if (userData) {
                 if (userData.status === "NV") {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Given EmailId Not Approved Yet!")
                 }
                 else if (userData.status === "R") {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("logIn Access For Given EmailId DENIED By SUPER ADMIN")
-
                 }
             }
 
@@ -133,10 +141,11 @@ class UserService {
             // Rethrow if it's a known error
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Throw a generic error for unknown issues
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
 
-            // Throw a generic error for unknown issues
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 

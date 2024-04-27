@@ -34,10 +34,6 @@ router.get('/getProjectNames', jwtHelperObj.verifyAccessToken, async (req, res, 
     try {
         const projectsServiceObj = new ProjectsService()
         const data = await projectsServiceObj.getProjectNames()
-            .catch(err => {
-                console.log("Error occured", err.message);
-                throw err;
-            })
 
         res.send({
             "status": 200,
@@ -55,6 +51,9 @@ router.get('/getAvailableFilteredProjectNames', jwtHelperObj.verifyAccessToken, 
         const { project_type } = req.query;
         const projectsServiceObj = new ProjectsService()
         const projectNames = await projectsServiceObj.getAvailableFilteredProjectNames(project_type)
+        if (!project_type) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("role_type field is missing");
+        }
 
         res.send({
             "status": 200,
@@ -112,6 +111,9 @@ router.get('/getFilteredVillaNumbers', jwtHelperObj.verifyAccessToken, async (re
     try {
         const projectsServiceObj = new ProjectsService();
         const { project_name } = req.query
+        if (!project_name) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("missing project_name.")
+        }
         const villaNumbers = await projectsServiceObj.getFilteredVillaNumbers(project_name)
 
         res.send({
@@ -129,6 +131,9 @@ router.get('/getFilteredPlotNumbers', jwtHelperObj.verifyAccessToken, async (req
     try {
         const projectsServiceObj = new ProjectsService();
         const { project_name } = req.query
+        if (!project_name) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("missing project_name.")
+        }
         const plotNumbers = await projectsServiceObj.getFilteredPlotNumbers(project_name)
 
         res.send({
@@ -146,6 +151,9 @@ router.get('/getFilteredPlotNumbersOfFLs', jwtHelperObj.verifyAccessToken, async
     try {
         const projectsServiceObj = new ProjectsService();
         const { project_name } = req.query
+        if (!project_name) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("missing project_name.")
+        }
         const plotNumbers = await projectsServiceObj.getFilteredPlotNumbersOfFLs(project_name)
         res.send({
             "status": 200,
@@ -162,6 +170,9 @@ router.get('/getSqYards', jwtHelperObj.verifyAccessToken, async (req, res, next)
     try {
         const projectsServiceObj = new ProjectsService();
         const { project_name, plot_number } = req.query
+        if (!project_name || !plot_number) {
+            throw new global.DATA.PLUGINS.httperrors.BadRequest("missing project_name/plot_number.")
+        }
         const SqYards = await projectsServiceObj.getSqYards(project_name, plot_number)
         res.send({
             "status": 200,
@@ -178,6 +189,9 @@ router.get('/getProjectsData', jwtHelperObj.verifyAccessToken, async (req, res, 
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const { project_type } = req.query
+            if (!project_type) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("missing project_type.")
+            }
             const projectsServiceObj = new ProjectsService()
             const data = await projectsServiceObj.getProjectsData(project_type.toUpperCase())
                 .catch(err => {
@@ -206,6 +220,9 @@ router.get('/getAvailableProjectsData', jwtHelperObj.verifyAccessToken, async (r
     try {
         if (req.aud.split(":")[1] === "SALES PERSON" || req.aud.split(":")[1] === "CHANNEL PARTNER") {
             const { project_type } = req.query
+            if (!project_type) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("missing project_type.")
+            }
             const projectsServiceObj = new ProjectsService()
             const data = await projectsServiceObj.getAvailableProjectsData(project_type.toUpperCase())
 
@@ -230,6 +247,9 @@ router.get('/status-count', jwtHelperObj.verifyAccessToken, async (req, res, nex
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const { project_type } = req.query
+            if (!project_type) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("missing project_type.")
+            }
             const projectsServiceObj = new ProjectsService()
             const data = await projectsServiceObj.getStatusCount(project_type.toUpperCase())
 

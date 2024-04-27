@@ -40,9 +40,10 @@ class HistoryService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -85,10 +86,9 @@ class HistoryService {
             )
             if (!response) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("no details with the given combination of filters");
-
             }
 
-            return response
+            return response;
         }
         catch (err) {
             console.error("Error in getPraticularHistoryDetails: ", err.message);
@@ -96,17 +96,17 @@ class HistoryService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
     async getCommissionHolderslist(role_type) {
         try {
             if (!['SALES PERSON', 'CHANNEL PARTNER']) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("Incorrect role_type it should be either 'SALES PERSON' or 'CHANNEL PARTNER'");
-
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Incorrect role_type: ${role_type} it should be either 'SALES PERSON' or 'CHANNEL PARTNER'`);
             }
             const response = await ReceiptsModel.findAll({
                 where: {
@@ -138,9 +138,10 @@ class HistoryService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -170,9 +171,10 @@ class HistoryService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 }

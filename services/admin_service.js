@@ -8,52 +8,56 @@ class AdminService {
     }
 
     async createSuperAdmin(userdetails) {
-        try {
-            const { email_id, password, user_name, address = null, contact_no = null, pancard_no = null, bank_ac_no = null, bussiness_experience = null } = userdetails;
+        return await global.DATA.CONNECTION.mysql.transaction(async (t) => {
+            try {
+                const { email_id, password, user_name, address = null, contact_no = null, pancard_no = null, bank_ac_no = null, bussiness_experience = null } = userdetails;
 
-            // Check if a user with the same email already exists
-            const existingUser = await UsersModel.findOne({ where: { email_id } });
-            if (existingUser) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("EMAIL ID ALREADY IN USE");
+                // Check if a user with the same email already exists within the transaction
+                const existingUser = await UsersModel.findOne({ where: { email_id }, transaction: t });
+                if (existingUser) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("EMAIL ID ALREADY IN USE");
+                }
+
+                // Hash the password
+                const salt = await global.DATA.PLUGINS.bcrypt.genSalt(10);
+                const hashedPassword = await global.DATA.PLUGINS.bcrypt.hash(password, salt);
+
+                const currentDate = new Date().toISOString().slice(0, 10); // Simplified date handling
+
+                // Prepare the user payload
+                const userPayload = {
+                    user_name,
+                    email_id,
+                    password: hashedPassword,
+                    status: "A",
+                    role_type: "SUPER ADMIN",
+                    date_of_signUp: currentDate,
+                    date_of_validation: currentDate,
+                    address,
+                    contact_no,
+                    pancard_no,
+                    bank_ac_no,
+                    bussiness_experience
+                };
+
+                // Create the new user within the transaction
+                const newUser = await UsersModel.create(userPayload, { transaction: t });
+
+                // If everything is successful, the transaction will automatically commit after the block
+                return newUser;
+            } catch (err) {
+                console.error("Error in createSuperAdmin: ", err.message);
+
+                // If it's a known error, rethrow it for the router to handle
+                if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                    throw err;
+                } else {
+                    // Log and throw a generic server error for unknown errors
+                    throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+                }
+
             }
-
-            // Hash the password
-            const salt = await global.DATA.PLUGINS.bcrypt.genSalt(10);
-            const hashedPassword = await global.DATA.PLUGINS.bcrypt.hash(password, salt);
-
-            const currentDate = new Date().toISOString().slice(0, 10); // Simplified date handling
-
-
-            // Prepare the user payload
-            const userPayload = {
-                user_name,
-                email_id,
-                password: hashedPassword,
-                status: "A",
-                role_type: "SUPER ADMIN",
-                date_of_signUp: currentDate,
-                date_of_validation: currentDate,
-                address,
-                contact_no,
-                pancard_no,
-                bank_ac_no,
-                bussiness_experience
-            };
-
-            // Create the new user
-            const newUser = await UsersModel.create(userPayload);
-            return newUser;
-        } catch (err) {
-            console.error("Error in createSuperAdmin: ", err.message);
-
-            // Rethrow if it's a known error
-            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
-                throw err;
-            }
-
-            // Throw a generic error for unknown issues
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
-        }
+        });
     }
 
     async getUsersList(status_filter) {
@@ -85,17 +89,20 @@ class AdminService {
         } catch (err) {
             console.error("Error in getUsersList: ", err.message);
 
+            // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
     async validateUser(userDetails) {
-        try {
-            return await global.DATA.CONNECTION.mysql.transaction(async (t) => {
+        return await global.DATA.CONNECTION.mysql.transaction(async (t) => {
+
+            try {
                 const currentDate = new Date().toISOString().slice(0, 10); // Simplified date handling
                 const updateData = { status: userDetails.status.toUpperCase(), date_of_validation: currentDate };
 
@@ -117,16 +124,17 @@ class AdminService {
                 }
 
                 return userDetails.status.toUpperCase() === 'R' ? 'Rejected Successfully' : 'Approved Successfully';
-            });
-        } catch (err) {
-            console.error("Error in validateUser: ", err.message);
-            // If it's a known error, rethrow it for the router to handle
-            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
-                throw err;
+            } catch (err) {
+                console.error("Error in validateUser: ", err.message);
+                // If it's a known error, rethrow it for the router to handle
+                if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                    throw err;
+                } else {
+                    // Log and throw a generic server error for unknown errors
+                    throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+                }
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred (An error occurred during the user validation process)");
-        }
+        });
     }
 }
 

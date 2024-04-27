@@ -255,7 +255,7 @@ class CommissionService {
             });
 
             if (!commission) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("Commission not found.");
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Commission not found with the given commission_id:${commission_id}.`);
             }
 
             // Check if the new commission received till now exceeds total commission
@@ -273,16 +273,17 @@ class CommissionService {
             });
 
             await transaction.commit();
-            return "COMMISSION PAY SUCCESSFULLY PROCESSED";
-
+            return "COMMISSION PAY SUCCESSFULLY PROCESSED";;
         } catch (err) {
             console.error("Error in payCommission: ", err.message);
             if (transaction) await transaction.rollback();
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -295,11 +296,17 @@ class CommissionService {
             })
 
             const data = (response);
-            console.log("View All Cancled Commisions", data);
             return data;
         }
         catch (err) {
-            throw err;
+            console.error("Error in getCancledCommissions: ", err.message);
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
     }
 
@@ -353,7 +360,14 @@ class CommissionService {
             })
         }
         catch (err) {
-            throw err;
+            console.error("Error in validateCommission: ", err.message);
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
     }
 
@@ -409,7 +423,14 @@ class CommissionService {
             })
         }
         catch (err) {
-            throw err;
+            console.error("Error in cancelCommission: ", err.message);
+            // If it's a known error, rethrow it for the router to handle
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
     }
 }

@@ -9,51 +9,64 @@ class ProjectsService {
     }
 
     async createNewProject(payload) {
-        try {
-            // Check if project_type is provided and valid
-            if (!payload.project_type || !['APARTMENT', 'VILLA', 'PLOT', 'FARM_LAND'].includes(payload.project_type.toUpperCase())) {
-                throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid or missing project_type.");
+        return await global.DATA.CONNECTION.mysql.transaction(async (t) => {
+            try {
+                // Check if project_type is provided and valid
+                if (!payload.project_type || !['APARTMENT', 'VILLA', 'PLOT', 'FARM_LAND'].includes(payload.project_type.toUpperCase())) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid or missing project_type.");
+                }
+
+                // Validate required fields based on project_type
+                this.validateRequiredFields(payload);
+
+                // Construct payload identifier based on project type
+                let payloadIdentifierCheck = this.constructPayloadIdentifier(payload);
+
+                // Check if a project with the same identifier already exists
+                const existingProject = await ProjectsModel.findOne({ where: { pid: payloadIdentifierCheck } });
+                if (existingProject) {
+                    throw new global.DATA.PLUGINS.httperrors.Conflict("Project already created with the given details");
+                }
+
+                // Create the new project
+                await ProjectsModel.create({ ...payload, pid: payloadIdentifierCheck });
+                return "Successfully created project.";
+
+            } catch (err) {
+                console.error("Error in createNewProject: ", err.message);
+                if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                    throw err;
+                } else {
+                    throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+                }
             }
-
-            // Validate required fields based on project_type
-            this.validateRequiredFields(payload);
-
-            // Construct payload identifier based on project type
-            let payloadIdentifierCheck = this.constructPayloadIdentifier(payload);
-
-            // Check if a project with the same identifier already exists
-            const existingProject = await ProjectsModel.findOne({ where: { pid: payloadIdentifierCheck } });
-            if (existingProject) {
-                throw new global.DATA.PLUGINS.httperrors.Conflict("Project already created with the given details");
-            }
-
-            // Create the new project
-            const newlyCreatedProject = await ProjectsModel.create({ ...payload, pid: payloadIdentifierCheck });
-            return "Successfully created project.";
-
-        } catch (err) {
-            console.error("Error in createNewProject: ", err.message);
-            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
-                throw err;
-            }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
-        }
+        });
     }
 
     validateRequiredFields(payload) {
-        const requiredFields = {
-            APARTMENT: ['project_name', 'tower_number', 'flat_number'],
-            VILLA: ['project_name', 'villa_number'],
-            PLOT: ['project_name', 'plot_number'],
-            FARM_LAND: ['project_name', 'plot_number', 'sq_yards'],
-        };
+        try {
+            const requiredFields = {
+                APARTMENT: ['project_name', 'tower_number', 'flat_number'],
+                VILLA: ['project_name', 'villa_number'],
+                PLOT: ['project_name', 'plot_number'],
+                FARM_LAND: ['project_name', 'plot_number', 'sq_yards'],
+            };
 
-        const fields = requiredFields[payload.project_type.toUpperCase()];
-        const missingFields = fields.filter(field => !payload[field]);
+            const fields = requiredFields[payload.project_type.toUpperCase()];
+            const missingFields = fields.filter(field => !payload[field]);
 
-        if (missingFields.length > 0) {
-            throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields: ${missingFields.join(', ')}`);
+            if (missingFields.length > 0) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest(`Missing required fields: ${missingFields.join(', ')}`);
+            }
+        } catch (err) {
+            console.error("Error in validateRequiredFields: ", err.message);
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
+
     }
 
     constructPayloadIdentifier(payload) {
@@ -261,8 +274,7 @@ class ProjectsService {
 
     async getProjectNames() {
         try {
-            console.log('enter')
-            const response = await DATA.CONNECTION.mysql.query(`select project_name from projects`, {
+            const response = await global.DATA.CONNECTION.mysql.query(`select project_name from projects`, {
                 type: Sequelize.QueryTypes.SELECT
             }).catch(err => {
                 console.log("Error while fetching data", err.message);
@@ -270,7 +282,7 @@ class ProjectsService {
             })
 
             const data = (response);
-            console.log("View All Projects", data);
+            // console.log("View All Projects", data);
             let uniqueProjectNames = new Set();
 
             // Filter the data array to get only unique project_name values
@@ -282,11 +294,16 @@ class ProjectsService {
                 return false;
             });
 
-            console.log(uniqueProjectNameData);
+            // console.log(uniqueProjectNameData);
             return uniqueProjectNameData;
         }
         catch (err) {
-            throw err;
+            console.error("Error in getProjectNames: ", err.message);
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
         }
     }
 
@@ -312,8 +329,9 @@ class ProjectsService {
             console.error("Error in getAvailableFilteredProjectNames: ", err.message);
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -340,8 +358,9 @@ class ProjectsService {
             console.error("Error in getFilteredTowerNumbers: ", err.message);
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -367,8 +386,9 @@ class ProjectsService {
             console.error("Error in getFilteredFlatNumbers: ", err.message);
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -395,8 +415,9 @@ class ProjectsService {
             console.error("Error in getFilteredVillaNumbers: ", err.message);
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -423,8 +444,9 @@ class ProjectsService {
             console.error("Error in getFilteredPlotNumbers: ", err.message);
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -451,8 +473,9 @@ class ProjectsService {
             console.error("Error in getFilteredPlotNumbersOfFLs: ", err.message);
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -474,8 +497,9 @@ class ProjectsService {
             console.error("Error in getFilteredPlotNumbersOfFLs: ", err.message);
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -503,12 +527,11 @@ class ProjectsService {
             return response;
         } catch (err) {
             console.error("Error in getProjectsData: ", err.message);
-
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -542,9 +565,9 @@ class ProjectsService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
@@ -575,9 +598,9 @@ class ProjectsService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 

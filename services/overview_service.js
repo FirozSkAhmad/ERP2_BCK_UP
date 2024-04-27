@@ -9,7 +9,6 @@ class OverviewService {
 
     }
 
-
     async getOverview() {
         try {
             // Fetch income data and calculate total income
@@ -60,7 +59,7 @@ class OverviewService {
             // Sum up all expenses
             const totalExpenses = salaryExpenses + miscellaneousExpenses + commissionExpenses;
 
-            const totalBalance =  totalIncome - totalExpenses;
+            const totalBalance = totalIncome - totalExpenses;
 
             // Prepare the final data object
             const data = {
@@ -79,9 +78,10 @@ class OverviewService {
             // If it's a known error, rethrow it for the router to handle
             if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
                 throw err;
+            } else {
+                // Log and throw a generic server error for unknown errors
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
             }
-            // Log and throw a generic server error for unknown errors
-            throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
         }
     }
 
