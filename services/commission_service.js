@@ -11,8 +11,8 @@ const TokenOrAdvanceHistoryModel = require('../utils/Models/TokenOrAdvanceHistor
 const BlockedProjectsModel = require('../utils/Models/BlockedProjects/BlockedProjectsModel');
 
 class CommissionService {
-    constructor() {
-
+    constructor(io) {
+        this.io = io;
     }
 
     async getCommissionHoldersList(commissionFilter) {
@@ -273,6 +273,10 @@ class CommissionService {
             });
 
             await transaction.commit();
+            // Emit an event after paying commission
+            this.io.emit('new-payCommission', { message: `New Commission paid successfully. Please refresh the page to see the updates.` });
+
+
             return "COMMISSION PAY SUCCESSFULLY PROCESSED";;
         } catch (err) {
             console.error("Error in payCommission: ", err.message);

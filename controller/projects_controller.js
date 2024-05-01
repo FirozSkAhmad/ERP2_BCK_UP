@@ -10,7 +10,7 @@ router.post('/createNewProject', jwtHelperObj.verifyAccessToken, async (req, res
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
 
-            const projectsServiceObj = new ProjectsService();
+            const projectsServiceObj = new ProjectsService(req.io);
             const message = await projectsServiceObj.createNewProject(req.body)
 
             res.send({

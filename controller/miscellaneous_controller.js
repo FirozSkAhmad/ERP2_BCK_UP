@@ -10,7 +10,7 @@ router.post('/addMiscellaneous', jwtHelperObj.verifyAccessToken, async (req, res
     try {
         const role = req.aud.split(":")[1];
         if (role === "SUPER ADMIN") {
-            const miscellaneousServiceObj = new MiscellaneousService();
+            const miscellaneousServiceObj = new MiscellaneousService(req.io);
             const message = await miscellaneousServiceObj.addMiscellaneous(req.body);
 
             res.send({

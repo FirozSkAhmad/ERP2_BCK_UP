@@ -1,8 +1,8 @@
 const MiscellaneousModel = require('../utils/Models/Miscellaneous/MiscellaneousModel')
 
 class MiscellaneousService {
-    constructor() {
-
+    constructor(io) {
+        this.io = io;
     }
 
     async addMiscellaneous(miscellaneousDetails) {
@@ -12,6 +12,9 @@ class MiscellaneousService {
                 await MiscellaneousModel.create({
                     ...miscellaneousDetails
                 }, { transaction: t })
+
+                // Emit an event after miscellaneous action
+                this.io.emit('new-miscellaneous', { message: `New miscellaneous added. Please refresh the page to see the updates.` });
 
                 return "Added Miscellaneous Successfully";
 

@@ -13,8 +13,8 @@ const Constants = require('../utils/Constants/response_messages')
 
 
 class ReceiptServices {
-    constructor() {
-        // Assuming DATA, and models like ReceiptsModel, ProjectsModel are available in the context
+    constructor(io) {
+        this.io = io;
     }
 
     async getPaymentsList(statusFilter) {
@@ -165,6 +165,9 @@ class ReceiptServices {
             }
 
             await transaction.commit();
+            
+            // Emit an event after partial payment
+            this.io.emit('new-partPayment', { message: `New Part payment recorded successfully. Please refresh the page to see the updates.` });
 
             return "PAYMENT SUCCESSFULLY PROCESSED";
 

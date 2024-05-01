@@ -9,7 +9,8 @@ const UsersModel = global.DATA.CONNECTION.mysql.define("users", {
     },
     user_name: {
         type: Sequelize.DataTypes.STRING(100),
-        allowNull: false
+        allowNull: false,
+        unique: true
     },
     password: {
         type: Sequelize.STRING(200),
@@ -55,6 +56,10 @@ const UsersModel = global.DATA.CONNECTION.mysql.define("users", {
     },
     bussiness_experience: {
         type: Sequelize.DataTypes.STRING(100),
+        allowNull: true
+    },
+    notifications: {
+        type: Sequelize.JSON,
         allowNull: true
     }
 }, {

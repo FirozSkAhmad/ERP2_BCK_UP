@@ -10,7 +10,7 @@ router.post('/createReceipt', jwtHelperObj.verifyAccessToken, async (req, res, n
         if (req.aud.split(":")[1] === "SALES PERSON" || req.aud.split(":")[1] === "CHANNEL PARTNER") {
             const commission_holder_id = req.aud.split(":")[0]
             const role_type = req.aud.split(":")[1]
-            const reciptsServiceObj = new ReceiptServices();
+            const reciptsServiceObj = new ReceiptServices(req.io);
             const details = await reciptsServiceObj.createReceipt(req.body, commission_holder_id, role_type)
 
             res.send({
@@ -90,7 +90,7 @@ router.put('/validateReceipt/:approveOrReject', jwtHelperObj.verifyAccessToken, 
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("approveOrReject must be 'APPROVE'or 'REJECT'");
             }
 
-            const receiptsServiceObj = new ReceiptServices();
+            const receiptsServiceObj = new ReceiptServices(req.io);
             const message = await receiptsServiceObj.validateReceipt(req.body, approveOrReject.toUpperCase());
             res.send({
                 "status": 200,
@@ -242,7 +242,7 @@ router.get('/getParticularPartPaymentHistory', jwtHelperObj.verifyAccessToken, a
 router.put('/editParticularPartPaymentAmount', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN") {
-            const reciptsServiceObj = new ReceiptServices();
+            const reciptsServiceObj = new ReceiptServices(req.io);
             const message = await reciptsServiceObj.editParticularPartPaymentAmount(req.body)
 
             res.send({
@@ -265,7 +265,7 @@ router.put('/editParticularPartPaymentAmount', jwtHelperObj.verifyAccessToken, a
 router.put('/deleteParticularPartPaymentAmount', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN") {
-            const reciptsServiceObj = new ReceiptServices();
+            const reciptsServiceObj = new ReceiptServices(req.io);
             const { pp_id, pd_id } = req.query
             if (!pp_id || pd_id) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("missing pd_id/pp_id.")
@@ -295,7 +295,7 @@ router.put('/deleteParticularProjectPartPayments', jwtHelperObj.verifyAccessToke
             if (!project_id || pd_id) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("missing pd_id/project_id.")
             }
-            const reciptsServiceObj = new ReceiptServices();
+            const reciptsServiceObj = new ReceiptServices(req.io);
             const message = await reciptsServiceObj.deleteParticularProjectPartPayments(project_id, pd_id)
 
             res.send({

@@ -8,7 +8,7 @@ const jwtHelperObj = new JwtHelper();
 // Add new Payroll
 router.post('/createLead', async (req, res, next) => {
     try {
-            const leadsServiceObj = new LeadsService();
+            const leadsServiceObj = new LeadsService(req.io);
             const message = await leadsServiceObj.createLead(req.body);
 
             res.send({

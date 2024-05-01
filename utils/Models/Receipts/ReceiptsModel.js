@@ -15,6 +15,10 @@ const ReceiptsModel = global.DATA.CONNECTION.mysql.define("receipts", {
         type: Sequelize.DataTypes.STRING(100),
         allowNull: false
     },
+    client_emailId: {
+        type: Sequelize.DataTypes.STRING(100),
+        allowNull: false
+    },
     client_adhar_no: {
         type: Sequelize.DataTypes.STRING(100),
         allowNull: false

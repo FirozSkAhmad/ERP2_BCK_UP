@@ -1,8 +1,8 @@
 const LeadsModel = require('../utils/Models/Leads/LeadsModel')
 
 class LeadsService {
-    constructor() {
-
+    constructor(io) {
+        this.io = io;
     }
 
     async createLead(leadDetails) {
@@ -24,6 +24,8 @@ class LeadsService {
                 await LeadsModel.create({
                     ...leadDetails
                 }, { transaction: t })
+                // Emit an event after lead creation
+                this.io.emit('new-lead', { message: `New lead created successfully. Please refresh the page to see the updates.` });
 
                 return "Added lead Successfully";
             }

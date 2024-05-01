@@ -10,7 +10,7 @@ router.post('/addNewPayRoll', jwtHelperObj.verifyAccessToken, async (req, res, n
     try {
         const role = req.aud.split(":")[1];
         if (role === "SUPER ADMIN") {
-            const payRollServiceObj = new PayrollService();
+            const payRollServiceObj = new PayrollService(req.io);
             const message = await payRollServiceObj.addNewPayRoll(req.body);
 
             res.send({
@@ -60,7 +60,7 @@ router.post("/addRoleType", jwtHelperObj.verifyAccessToken, async (req, res, nex
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("role_type field is missing");
             }
 
-            const payRollServiceObj = new PayrollService();
+            const payRollServiceObj = new PayrollService(req.io);
             const message = await payRollServiceObj.addRoleType(role_type.toUpperCase());
             res.send({
                 "status": 201,

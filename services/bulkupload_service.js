@@ -3,8 +3,8 @@ const stream = require('stream');
 const ProjectsModel = require('../utils/Models/Projects/ProjectsModel');
 
 class BulkUpload {
-    constructor(dbConnection) {
-        this.dbConnection = dbConnection;
+    constructor(io) {
+        this.io = io;
     }
 
     async processCsvFile(buffer, type) {
@@ -73,6 +73,9 @@ class BulkUpload {
                 }));
                 await Model.bulkCreate(preparedData, { transaction: t });
             });
+            // Emit an event after bulk upload
+            this.io.emit('new-bulkUpload', { message: `New projects bulk uploaded. Please refresh the page to see the updates.` });
+
             return { status: 200, message: `${data.length} ${type} data added successfully.` };
         } catch (err) {
             console.error('Bulk insert error:', err.message);
@@ -94,19 +97,19 @@ class BulkUpload {
                 PLOT: ['Project Name', 'Plot Number'],
                 FARM_LAND: ['Project Name', 'Plot Number', 'Sq.yards'],
             };
-    
+
             const typeFields = requiredFields[type];
             if (!typeFields) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest(`Unsupported type ${type}`);
             }
-    
+
             const errors = [];
-    
+
             data.forEach(item => {
                 const itemFields = Object.keys(item);
                 const missingFields = typeFields.filter(field => !item.hasOwnProperty(field));
                 const extraFields = itemFields.filter(field => !typeFields.includes(field));
-    
+
                 if (missingFields.length > 0) {
                     errors.push(`Missing required fields: ${missingFields.join(', ')}`);
                 }
@@ -114,7 +117,7 @@ class BulkUpload {
                     errors.push(`Extra fields provided: ${extraFields.join(', ')}`);
                 }
             });
-    
+
             if (errors.length > 0) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest(`Validation errors for type ${type}: ${errors.join('; ')}`);
             }
@@ -129,7 +132,7 @@ class BulkUpload {
             }
         }
     }
-    
+
 
     generatePayloadIdentifier(item, type) {
         switch (type) {

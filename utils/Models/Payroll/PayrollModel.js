@@ -24,6 +24,10 @@ const PayrollModel = global.DATA.CONNECTION.mysql.define("payroll", {
         type: Sequelize.FLOAT,
         allowNull: false
     },
+    date_of_pay: {
+        type: Sequelize.STRING(100),
+        allowNull: false
+    },
     createdAt: {
         type: Sequelize.DataTypes.DATE,
         allowNull: false

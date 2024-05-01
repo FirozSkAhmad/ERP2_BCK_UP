@@ -2,8 +2,8 @@ const PayrollModel = require('../utils/Models/Payroll/PayrollModel')
 const RoleTypesModel = require('../utils/Models/PayrollRoleTypes/RoleTypesModel')
 
 class PayrollService {
-    constructor() {
-
+    constructor(io) {
+        this.io = io;
     }
 
     async addNewPayRoll(payrollDetails) {
@@ -29,9 +29,21 @@ class PayrollService {
 
                 payrollDetails.role_type = roleTypeData.role_type
 
+                // Get the current date
+                const currentDate = new Date();
+
+                // Format the date as dd-mm-yyyy
+                const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${currentDate.getFullYear()}`;
+
+                // Assign the formatted date to payrollDetails.date_of_pay
+                payrollDetails.date_of_pay = formattedDate;
+
                 await PayrollModel.create({
                     ...payrollDetails
                 }, { transaction: t })
+
+                // Emit an event after adding a new payroll
+                this.io.emit('new-payroll', { message: `New payroll added successfully. Please refresh the page to see the updates.` });
 
                 return "Added Payroll Successfully";
 
@@ -151,6 +163,9 @@ class PayrollService {
     async addRoleType(role_type) {
         try {
             await RoleTypesModel.create({ role_type })
+
+            // Emit an event after adding a new role type
+            this.io.emit('new-roleType', { message: `New role type added successfully. Please refresh the page to see the updates.` });
 
             return "Added Role Type Successfully";
         }

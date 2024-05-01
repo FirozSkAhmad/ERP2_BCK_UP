@@ -4,8 +4,8 @@ const { Sequelize } = require('sequelize')
 const ProjectsModel = require('../utils/Models/Projects/ProjectsModel');
 
 class ProjectsService {
-    constructor() {
-
+    constructor(io) {
+        this.io = io;
     }
 
     async createNewProject(payload) {
@@ -30,6 +30,10 @@ class ProjectsService {
 
                 // Create the new project
                 await ProjectsModel.create({ ...payload, pid: payloadIdentifierCheck });
+
+                // Emit an event after creating a new project
+                this.io.emit('new-project', { message: `New project created successfully. Please refresh the page to see the updates.` });
+
                 return "Successfully created project.";
 
             } catch (err) {

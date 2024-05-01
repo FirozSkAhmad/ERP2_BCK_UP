@@ -40,7 +40,7 @@ router.post('/payPartPayment', jwtHelperObj.verifyAccessToken, async (req, res, 
     try {
         const role = req.aud.split(":")[1];
         if (role === "SUPER ADMIN") {
-            const paymentsServiceObj = new PaymentsServices();
+            const paymentsServiceObj = new PaymentsServices(req.io);
             const data = await paymentsServiceObj.payPartPayment(req.body)
 
             res.send({

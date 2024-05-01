@@ -15,8 +15,8 @@ const Constants = require('../utils/Constants/response_messages')
 
 
 class ReceiptServices {
-    constructor() {
-
+    constructor(io) {
+        this.io = io;
     }
 
     async createReceipt(payload, commission_holder_id, role_type) {
@@ -85,6 +85,7 @@ class ReceiptServices {
             let receiptData = {
                 client_name: payload.client_name,
                 client_phn_no: payload.client_phn_no,
+                client_emailId: payload.client_emailId,
                 client_adhar_no: payload.client_adhar_no,
                 project_id: checkProject.project_id,
                 pd_id,
@@ -94,8 +95,13 @@ class ReceiptServices {
             };
 
             const receiptRecord = await ReceiptsModel.create(receiptData, { transaction });
+            
 
             await transaction.commit();
+
+            // Emit an event after new receipt created
+            this.io.emit('new-receipt', { message: `New miscellaneous added. Please refresh the page to see the updates.` });
+
             return { message: "Receipt created successfully", receipt_id: receiptRecord.receipt_id };
         } catch (err) {
             console.error("Error in createReceipt: ", err.message);
@@ -365,6 +371,9 @@ class ReceiptServices {
                 }
             });
 
+            // Emit an event after validating a new receipt
+            this.io.emit('new-receiptValidate', { message: `New receipt validated successfully. Please refresh the page to see the updates.` });
+
             return approveOrReject === "APPROVE" ? "RECEIPT APPROVED SUCCESSFULLY" : "RECEIPT REJECTED SUCCESSFULLY";
         } catch (err) {
             console.error("Error in getPendingReceiptsList: ", err.message);
@@ -560,7 +569,7 @@ class ReceiptServices {
                 where: {
                     receipt_id
                 },
-                attributes: ['receipt_id', 'client_name', 'client_phn_no', 'client_adhar_no', 'date_of_onboard', 'date_of_validation'],
+                attributes: ['receipt_id', 'client_name', 'client_phn_no','client_emailId', 'client_adhar_no', 'date_of_onboard', 'date_of_validation'],
                 include: [
                     {
                         model: UsersModel,
@@ -695,6 +704,10 @@ class ReceiptServices {
             });
             // Commit the transaction after all operations are successful
             await transaction.commit();
+
+            // Emit an event after editing a part payment
+            this.io.emit('new-partPaymentEdit', { message: `A Part payment edited successfully. Please refresh the page to see the updates.` });
+
             return 'Successfully updated the particular part payment amount.';
         } catch (err) {
             console.error("Error in editParticularPartPaymentAmount:", err.message);
@@ -779,6 +792,10 @@ class ReceiptServices {
 
             // Commit the transaction
             await transaction.commit();
+
+            // Emit an event after deleting a part payment
+            this.io.emit('new-partPaymentDelete', { message: `A Part payment deleted successfully. Please refresh the page to see the updates.` });
+
             return 'Successfully deleted the particular part payment amount.';
         } catch (err) {
             console.error("Error in deleteParticularPartPaymentAmount:", err.message);
@@ -845,6 +862,10 @@ class ReceiptServices {
             });
 
             await transaction.commit(); // Commit the transaction
+
+            // Emit an event after deleting project part payments
+            this.io.emit('new-ProjectPartPaymentsDelete', { message: `A Project part payments deleted successfully. Please refresh the page to see the updates.` });
+
             return 'Successfully deleted the entire part payments.';
         } catch (err) {
             console.error("Error in deleteParticularProjectPartPayments:", err.message);

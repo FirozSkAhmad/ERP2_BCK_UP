@@ -71,7 +71,7 @@ router.put('/payCommission', jwtHelperObj.verifyAccessToken, async (req, res, ne
         if (!commission_id || !commission_amount) {
             throw new global.DATA.PLUGINS.httperrors.BadRequest("missing commission_id/commission_amount.")
         }
-        const commissionServiceObj = new CommissionService()
+        const commissionServiceObj = new CommissionService(req.io)
         const message = await commissionServiceObj.payCommission(commission_id, commission_amount)
 
         res.send({
@@ -83,6 +83,7 @@ router.put('/payCommission', jwtHelperObj.verifyAccessToken, async (req, res, ne
         next(err);
     }
 })
+
 router.get('/getPraticularHistoryDetails', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         const userId = req.aud.split(":")[0];

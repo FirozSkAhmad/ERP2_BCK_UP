@@ -3,14 +3,24 @@ const UsersModel = require('../utils/Models/Users/UsersModel')
 const { Op } = require('sequelize');
 
 class AdminService {
-    constructor() {
-
+    constructor(io) {
+        this.io = io;
     }
 
     async createSuperAdmin(userdetails) {
         return await global.DATA.CONNECTION.mysql.transaction(async (t) => {
             try {
                 const { email_id, password, user_name, address = null, contact_no = null, pancard_no = null, bank_ac_no = null, bussiness_experience = null } = userdetails;
+
+                // Check if user anme already exists
+                const existingUserName = await UsersModel.findOne({
+                    where: {
+                        user_name: user_name,
+                    }
+                });
+                if (existingUserName) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Given user name is already in use");
+                }
 
                 // Check if a user with the same email already exists within the transaction
                 const existingUser = await UsersModel.findOne({ where: { email_id }, transaction: t });
@@ -122,6 +132,8 @@ class AdminService {
                 if (updatedCount === 0) {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest('No user data found with the given emailId');
                 }
+                // Emit an event after validation
+                this.io.emit('new-validation', { message: `New user validated. Please refresh the page to see the updates.` });
 
                 return userDetails.status.toUpperCase() === 'R' ? 'Rejected Successfully' : 'Approved Successfully';
             } catch (err) {

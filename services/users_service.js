@@ -16,6 +16,16 @@ class UserService {
             try {
                 const { email_id, password, confirmpassword, role_type, user_name } = userdetails;
 
+                // Check if user anme already exists
+                const existingUserName = await UsersModel.findOne({
+                    where: {
+                        user_name: user_name,
+                    }
+                });
+                if (existingUserName) {
+                    throw new global.DATA.PLUGINS.httperrors.BadRequest("Given user name is already in use");
+                }
+
                 // Check if email already exists with statuses 'NV' or 'A'
                 const existingUser = await UsersModel.findOne({
                     where: {

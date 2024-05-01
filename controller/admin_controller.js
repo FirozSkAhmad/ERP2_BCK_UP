@@ -49,7 +49,7 @@ router.get('/getUsersList', jwtHelperObj.verifyAccessToken, async (req, res, nex
 router.put('/validateUser', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN") {
-            const adminServiceObj = new AdminService()
+            const adminServiceObj = new AdminService(req.io)
             const message = await adminServiceObj.validateUser(req.body)
             res.send({
                 "status": 200,
