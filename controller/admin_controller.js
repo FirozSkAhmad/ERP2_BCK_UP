@@ -50,7 +50,9 @@ router.put('/validateUser', jwtHelperObj.verifyAccessToken, async (req, res, nex
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN") {
             const adminServiceObj = new AdminService(req.io)
-            const message = await adminServiceObj.validateUser(req.body)
+            const role_type = req.aud.split(":")[1]
+            const user_name = req.aud.split(":")[2]
+            const message = await adminServiceObj.validateUser(req.body, user_name, role_type)
             res.send({
                 "status": 200,
                 "message": message,

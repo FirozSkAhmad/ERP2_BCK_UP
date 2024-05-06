@@ -14,6 +14,7 @@ const CustomerController = require('../controller/customer_controller')
 const DiscountController = require('../controller/discount_controller')
 const LeadsController = require('../controller/leads_controller')
 const OverviewController = require('../controller/overview_controller')
+const NotificationController = require('../controller/notifications_controller')
 
 class IndexRoute {
     constructor(expressApp) {
@@ -37,6 +38,7 @@ class IndexRoute {
         this.app.use("/discounts", DiscountController);
         this.app.use("/leads", LeadsController);
         this.app.use("/overview", OverviewController);
+        this.app.use("/notifications", NotificationController);
     }
 }
 

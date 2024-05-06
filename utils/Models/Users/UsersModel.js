@@ -1,4 +1,6 @@
 const Sequelize = require('sequelize')
+const { Op } = require('sequelize');
+
 
 const UsersModel = global.DATA.CONNECTION.mysql.define("users", {
     user_id: {
@@ -10,7 +12,19 @@ const UsersModel = global.DATA.CONNECTION.mysql.define("users", {
     user_name: {
         type: Sequelize.DataTypes.STRING(100),
         allowNull: false,
-        unique: true
+        unique: true,
+        validate: {
+            async isUnique(value) {
+                const existingUser = await UsersModel.findOne({
+                    where: {
+                        user_name: value,
+                        status: {
+                            [Op.ne]: 'R' // Exclude users with status 'R'
+                        }
+                    }
+                });
+            }
+        }
     },
     password: {
         type: Sequelize.STRING(200),
@@ -19,7 +33,19 @@ const UsersModel = global.DATA.CONNECTION.mysql.define("users", {
     email_id: {
         type: Sequelize.DataTypes.STRING(100),
         allowNull: false,
-        unique: true
+        unique: true,
+        validate: {
+            async isUnique(value) {
+                const existingUser = await UsersModel.findOne({
+                    where: {
+                        email_id: value,
+                        status: {
+                            [Op.ne]: 'R' // Exclude users with status 'R'
+                        }
+                    }
+                });
+            }
+        }
     },
     role_type: {
         type: Sequelize.DataTypes.ENUM('SUPER ADMIN', 'SALES PERSON', 'MANAGER', 'CHANNEL PARTNER'),

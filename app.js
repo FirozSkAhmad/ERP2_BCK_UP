@@ -10,8 +10,8 @@ const { roleFinder } = require('./utils/Helpers/role_finder')
 const http = require('http'); // Import the HTTP module
 const socketIO = require('socket.io'); // Import socket.io
 
-const activeSessions = {};
-const socketToUserMap = {}; // Mapping to keep track of which socket belongs to which user
+// const activeSessions = {};
+// const socketToUserMap = {}; // Mapping to keep track of which socket belongs to which user
 
 class App {
     constructor() {
@@ -76,87 +76,60 @@ class App {
             })
 
             // Socket.io events
+            this.io.on('connection', (socket) => {
+                console.log('A user connected: ' + socket.id);
+
+                // Emit a 'welcome' event to the connected client
+                socket.emit('welcome', { message: 'Hi! Welcome to the socket connection!' });
+
+
+                socket.on('disconnect', () => {
+                    console.log('User disconnected: ' + socket.id);
+                });
+
+                // You can define more events here
+            });
+
+
+
+            // Socket.io events
             // this.io.on('connection', (socket) => {
-            //     console.log('A user connected');
-
-            //     // Emit a 'welcome' event to the connected client
-            //     socket.emit('welcome', { message: 'Hi! Welcome to the socket connection!' });
-
-
-            //     socket.on('disconnect', () => {
-            //         console.log('User disconnected');
-            //     });
-
-            //     // You can define more events here
-            // });
-
-            // this.io.on('connection', (socket) => {
-            //     socket.on('login', ({ email_id, password }) => {  // Adjusted parameter names to match client-side
-            //         const userKey = `${email_id}:${password}`;
+            //     socket.on('login', async ({ email_id, password }) => {
+            //         const userKey = email_id; // Use email as the unique key
             //         if (activeSessions[userKey]) {
-            //             socket.emit('login_error', 'This user is already logged in.');
-            //             console.log(`${email_id} 'This user is already logged in.`);
+            //             const { user_name, role_type } = activeSessions[userKey]; // Retrieve the stored user name and role type
+            //             socket.emit('login_error', `${user_name}(${role_type}) already logged in.`);
+            //             console.log(`${user_name}(${role_type}) already logged in.`);
             //         } else {
-            //             activeSessions[userKey] = socket.id;
-            //             socketToUserMap[socket.id] = { email_id, password }; // Store both username and role type
-            //             socket.emit('login_success', 'Logged in successfully.');
-            //             console.log(`${email_id} connected`);
+            //             try {
+            //                 const { user_name, role_type } = await roleFinder(email_id);
+            //                 activeSessions[userKey] = { socket_id: socket.id, user_name, role_type }; // Store user details along with socket id
+            //                 socketToUserMap[socket.id] = { user_name, role_type, email_id };
+            //                 socket.emit('login_success', `${user_name}(${role_type}) logged in successfully.`);
+            //                 console.log(`${user_name}(${role_type}) connected`);
+            //             } catch (error) {
+            //                 socket.emit('login_error', error.message); // Emit an error message to the client
+            //                 console.log(`Login error for ${email_id}: ${error.message}`);
+            //             }
             //         }
             //     });
 
             //     socket.on('disconnect', () => {
             //         const userInfo = socketToUserMap[socket.id];
             //         if (userInfo) {
-            //             const { email_id, password } = userInfo;
-            //             const userKey = `${email_id}:${password}`;
-            //             // Remove the user from activeSessions when they disconnect
-            //             if (activeSessions[userKey] === socket.id) {
+            //             const { user_name, role_type, email_id } = userInfo;
+            //             // Use email_id as the key since that's what we use in activeSessions
+            //             const userKey = email_id;
+            //             // Check if the disconnecting socket is the one in the activeSessions
+            //             if (activeSessions[userKey] && activeSessions[userKey].socket_id === socket.id) {
+            //                 // Remove the user from both activeSessions and socketToUserMap
             //                 delete activeSessions[userKey];
-            //                 delete socketToUserMap[socket.id]; // Also remove the mapping
-            //                 console.log(`${email_id} disconnected`); // Now user_name and role_type are correctly referenced
+            //                 delete socketToUserMap[socket.id];
+            //                 console.log(`${user_name}(${role_type}) disconnected`);
             //             }
             //         }
             //     });
             // });
-
-            // Socket.io events
-            this.io.on('connection', (socket) => {
-                socket.on('login', async ({ email_id, password }) => {
-                    const userKey = email_id; // Use email as the unique key
-                    if (activeSessions[userKey]) {
-                        const { user_name, role_type } = activeSessions[userKey]; // Retrieve the stored user name and role type
-                        socket.emit('login_error', `${user_name}(${role_type}) already logged in.`);
-                        console.log(`${user_name}(${role_type}) already logged in.`);
-                    } else {
-                        try {
-                            const { user_name, role_type } = await roleFinder(email_id);
-                            activeSessions[userKey] = { socket_id: socket.id, user_name, role_type }; // Store user details along with socket id
-                            socketToUserMap[socket.id] = { user_name, role_type, email_id };
-                            socket.emit('login_success', `${user_name}(${role_type}) logged in successfully.`);
-                            console.log(`${user_name}(${role_type}) connected`);
-                        } catch (error) {
-                            socket.emit('login_error', error.message); // Emit an error message to the client
-                            console.log(`Login error for ${email_id}: ${error.message}`);
-                        }
-                    }
-                });
-
-                socket.on('disconnect', () => {
-                    const userInfo = socketToUserMap[socket.id];
-                    if (userInfo) {
-                        const { user_name, role_type, email_id } = userInfo;
-                        // Use email_id as the key since that's what we use in activeSessions
-                        const userKey = email_id;
-                        // Check if the disconnecting socket is the one in the activeSessions
-                        if (activeSessions[userKey] && activeSessions[userKey].socket_id === socket.id) {
-                            // Remove the user from both activeSessions and socketToUserMap
-                            delete activeSessions[userKey];
-                            delete socketToUserMap[socket.id];
-                            console.log(`${user_name}(${role_type}) disconnected`);
-                        }
-                    }
-                });
-            });
 
 
             // Initialize and start cron jobs

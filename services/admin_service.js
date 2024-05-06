@@ -109,7 +109,7 @@ class AdminService {
         }
     }
 
-    async validateUser(userDetails) {
+    async validateUser(userDetails, user_name, role_type) {
         return await global.DATA.CONNECTION.mysql.transaction(async (t) => {
 
             try {
@@ -133,7 +133,7 @@ class AdminService {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest('No user data found with the given emailId');
                 }
                 // Emit an event after validation
-                this.io.emit('new-validation', { message: `New user validated. Please refresh the page to see the updates.` });
+                this.io.emit('new-validation', { user_name, role_type, message: `New user validated. Please refresh the page to see the updates.` });
 
                 return userDetails.status.toUpperCase() === 'R' ? 'Rejected Successfully' : 'Approved Successfully';
             } catch (err) {

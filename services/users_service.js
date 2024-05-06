@@ -16,12 +16,16 @@ class UserService {
             try {
                 const { email_id, password, confirmpassword, role_type, user_name } = userdetails;
 
-                // Check if user anme already exists
+                // Check if user name already exists
                 const existingUserName = await UsersModel.findOne({
                     where: {
                         user_name: user_name,
+                        status: {
+                            [Op.or]: ['NV', 'A']  // Checking for either 'NV' or 'A'
+                        }
                     }
                 });
+
                 if (existingUserName) {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Given user name is already in use");
                 }
@@ -80,6 +84,7 @@ class UserService {
                     ...additionalFields
                 };
 
+                console.log(userPayload)
                 const newUser = await UsersModel.create(userPayload, { transaction: t });
                 // Emit an event after user creation
                 this.io.emit('new-user', { message: `New user registered: ${newUser.user_name}` });
@@ -125,7 +130,7 @@ class UserService {
             }
 
             // Valid email and password
-            const tokenPayload = userData.user_id + ":" + userData.role_type
+            const tokenPayload = userData.user_id + ":" + userData.role_type + ":" + userData.user_name
 
             const accessToken = await this.jwtObject.generateAccessToken(tokenPayload);
 
