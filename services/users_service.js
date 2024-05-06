@@ -4,6 +4,7 @@ const sendgrid = require('@sendgrid/mail')
 const UsersModel = require('../utils/Models/Users/UsersModel')
 const _ = require('lodash');
 const { Op } = require('sequelize');
+const nodemailer = require('nodemailer');
 
 class UserService {
     constructor(io) {
@@ -84,7 +85,6 @@ class UserService {
                     ...additionalFields
                 };
 
-                console.log(userPayload)
                 const newUser = await UsersModel.create(userPayload, { transaction: t });
                 // Emit an event after user creation
                 this.io.emit('new-user', { message: `New user registered: ${newUser.user_name}` });
@@ -164,69 +164,74 @@ class UserService {
         }
     }
 
-    sendLinkToEmail(name, emailId, Link) {
+    sendLinkToEmail(user_name, email_id, link) {
         return new Promise((resolve, reject) => {
-            const messageBody = {
-                to: emailId,
-                from: process.env.EMAIL_SENDER,
-                subject: "Password Reset Request",
-                html: `
-                <html>
-                    <head>
-                        <style>
-                            .button {
-                                background-color: #4CAF50; /* Green */
-                                border: none;
-                                color: white;
-                                padding: 10px 20px;
-                                text-align: center;
-                                text-decoration: none;
-                                display: inline-block;
-                                font-size: 16px;
-                            }
-                        </style>
-                    <head>
-                    <body>
-                        <h2> Hello ${name}. Welcome to VRC Application </h2>
-                        <p>You recently requested to reset your password for your VRC account. Use the below button to reset it. <span>
-                        <b>This password reset link is only valid for the next 15 minutes.</b>
-                        </span></p>
-                        <p>If you did not request a password reset, please ignore this email or contact support if you have questions.
-                        </p>
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: process.env.SENDER_EMAIL_ID,
+                    pass: process.env.SENDER_PASSWORD
+                }
+            });
 
-                        <p>
-                            <a href = ${Link}> <button class = "button" > RESET YOUR PASSWORD </button> </a>
-                        </p>    
-                        <p>
-                            Thanks, <br>
-                            FINDEMY Team
-                        </p>
-                    </body>
-                </html>
-                `
-            }
-            sendgrid.setApiKey(process.env.EMAIL_API_KEY);
-            sendgrid.send(messageBody).then(message => {
+            const mailOptions = {
+                from: process.env.SENDER_EMAIL_ID,
+                to: email_id,
+                subject: 'Password Reset Request',
+                html: `<html>
+                <head>
+                    <style>
+                        .button {
+                            background-color: #4CAF50; /* Green */
+                            border: none;
+                            color: white;
+                            padding: 10px 20px;
+                            text-align: center;
+                            text-decoration: none;
+                            display: inline-block;
+                            font-size: 16px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h2> Hello ${user_name}, Welcome to VRC Application </h2>
+                    <p>You recently requested to reset your password for your VRC account. Use the below button to reset it. <span>
+                    <b>This password reset link is only valid for the next 15 minutes.</b>
+                    </span></p>
+                    <p>If you did not request a password reset, please ignore this email or contact support if you have questions.
+                    </p>
+                    <p>
+                        <a href="${link}"><button class="button">RESET YOUR PASSWORD</button></a>
+                    </p>    
+                    <p>
+                        Thanks, <br>
+                        VRC Team
+                    </p>
+                </body>
+            </html>`};
+
+            transporter.sendMail(mailOptions).then(() => {
                 console.log("Email Sent to the Mail");
-                resolve("EMAIL SENT")
+                resolve("EMAIL SENT SUCCESSFULLY");
             }).catch(err => {
-                console.log("Eror occured during email sending", err.message);
-                reject("EMAIL NOT SENT")
-            })
-        })
+                console.error("Error occurred during email sending", err.message);
+                reject("EMAIL NOT SENT");
+            });
+        });
     }
 
-    async sendPasswordResetRequest(emailid) {
+    async sendPasswordResetRequest(email_id) {
         try {
 
-            if (!emailid) {
+            if (!email_id) {
                 return "EMAIL CANNOT BE EMPTY"
             }
 
             // check user exists or not
-            const user = await global.DATA.MODELS.users.findOne({
-                "where": {
-                    emailId: emailid
+            const user = await UsersModel.findOne({
+                where: {
+                    email_id,
+                    status: 'A'
                 }
             }).catch(err => {
                 throw new global.DATA.PLUGINS.httperrors.InternalServerError(Constants.SQL_ERROR)
@@ -237,14 +242,14 @@ class UserService {
             }
 
             // Valid email and password
-            const tokenPayload = user.id.toString();
+            const tokenPayload = user.user_id.toString();
 
             const accessToken = await this.jwtObject.generateAccessToken(tokenPayload);
 
-            const Link = `${process.env.RESET_BASE_URL}/${accessToken}`
-            console.log(Link);
+            const Link = 'dummy link'//`${process.env.RESET_BASE_URL}/${accessToken}`
 
-            const response = await this.sendLinkToEmail(user.name, emailid, Link);
+            const response = await this.sendLinkToEmail(user.user_name, email_id, Link);
+            console.log("accessToken", accessToken)
             return response;
         }
         catch (err) {
@@ -260,20 +265,18 @@ class UserService {
                     return "INVALID LINK/LINK EXPIRED"
                 } else {
                     // Access the decoded data
-                    console.log('Decoded JWT data:', decoded);
                     userId = decoded.aud;
-                    console.log('User ID:', userId);
                 }
             });
             const newPassword = password;
             const randomkey = await global.DATA.PLUGINS.bcrypt.genSalt(10);
             const hashedPassword = await global.DATA.PLUGINS.bcrypt.hash(newPassword, randomkey)
 
-            await global.DATA.MODELS.users.update({
+            await UsersModel.update({
                 password: hashedPassword
             }, {
                 where: {
-                    id: userId
+                    user_id: userId
                 }
             }).catch(err => {
                 console.log("Error while updating the password", err.message);

@@ -8,7 +8,7 @@ class ProjectsService {
         this.io = io;
     }
 
-    async createNewProject(payload) {
+    async createNewProject(payload, user_name, role_type) {
         return await global.DATA.CONNECTION.mysql.transaction(async (t) => {
             try {
                 // Check if project_type is provided and valid
@@ -32,7 +32,7 @@ class ProjectsService {
                 await ProjectsModel.create({ ...payload, pid: payloadIdentifierCheck });
 
                 // Emit an event after creating a new project
-                this.io.emit('new-project', { message: `New project created successfully. Please refresh the page to see the updates.` });
+                this.io.emit('new-project', { user_name, role_type, message: `New project created successfully. Please refresh the page to see the updates.` });
 
                 return "Successfully created project.";
 

@@ -7,10 +7,10 @@ class BulkUpload {
         this.io = io;
     }
 
-    async processCsvFile(buffer, type) {
+    async processCsvFile(buffer, type, user_name, role_type) {
         try {
             const results = await this.parseCsv(buffer);
-            return this.uploadDataBasedOnType(type, results);
+            return this.uploadDataBasedOnType(type, results, user_name, role_type);
         }
         catch (err) {
             console.error('processCsvFile error:', err.message);
@@ -38,9 +38,9 @@ class BulkUpload {
         });
     }
 
-    async uploadDataBasedOnType(type, data) {
+    async uploadDataBasedOnType(type, data, user_name, role_type) {
         try {
-            return this.bulkInsert(ProjectsModel, data, type);
+            return this.bulkInsert(ProjectsModel, data, type, user_name, role_type);
         }
         catch (err) {
             console.error('uploadDataBasedOnType error:', err.message);
@@ -54,7 +54,7 @@ class BulkUpload {
         }
     }
 
-    async bulkInsert(Model, data, type) {
+    async bulkInsert(Model, data, type, user_name, role_type) {
         try {
             // Validate required fields based on type
             this.validateRequiredFields(data, type);
@@ -74,7 +74,7 @@ class BulkUpload {
                 await Model.bulkCreate(preparedData, { transaction: t });
             });
             // Emit an event after bulk upload
-            this.io.emit('new-bulkUpload', { message: `New projects bulk uploaded. Please refresh the page to see the updates.` });
+            this.io.emit('new-bulkUpload', { user_name, role_type, message: `New projects bulk uploaded. Please refresh the page to see the updates.` });
 
             return { status: 200, message: `${data.length} ${type} data added successfully.` };
         } catch (err) {

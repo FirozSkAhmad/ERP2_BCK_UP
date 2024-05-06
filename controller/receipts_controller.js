@@ -10,8 +10,9 @@ router.post('/createReceipt', jwtHelperObj.verifyAccessToken, async (req, res, n
         if (req.aud.split(":")[1] === "SALES PERSON" || req.aud.split(":")[1] === "CHANNEL PARTNER") {
             const commission_holder_id = req.aud.split(":")[0]
             const role_type = req.aud.split(":")[1]
+            const user_name = req.aud.split(":")[2]
             const reciptsServiceObj = new ReceiptServices(req.io);
-            const details = await reciptsServiceObj.createReceipt(req.body, commission_holder_id, role_type)
+            const details = await reciptsServiceObj.createReceipt(req.body, commission_holder_id, user_name, role_type)
 
             res.send({
                 "status": 201,
@@ -83,15 +84,16 @@ router.get('/getParticularReceiptData', jwtHelperObj.verifyAccessToken, async (r
 router.put('/validateReceipt/:approveOrReject', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
 
-        const role = req.aud.split(":")[1];
-        if (role === "SUPER ADMIN") { // Assuming Constants.ROLES.SUPER_ADMIN is defined elsewhere
+        const role_type = req.aud.split(":")[1]
+        const user_name = req.aud.split(":")[2]
+        if (role_type === "SUPER ADMIN") { // Assuming Constants.ROLES.SUPER_ADMIN is defined elsewhere
             const { approveOrReject } = req.params;
             if (!['APPROVE', 'REJECT'].includes(approveOrReject.toUpperCase())) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("approveOrReject must be 'APPROVE'or 'REJECT'");
             }
 
             const receiptsServiceObj = new ReceiptServices(req.io);
-            const message = await receiptsServiceObj.validateReceipt(req.body, approveOrReject.toUpperCase());
+            const message = await receiptsServiceObj.validateReceipt(req.body, approveOrReject.toUpperCase(), user_name, role_type);
             res.send({
                 "status": 200,
                 message
@@ -243,7 +245,9 @@ router.put('/editParticularPartPaymentAmount', jwtHelperObj.verifyAccessToken, a
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN") {
             const reciptsServiceObj = new ReceiptServices(req.io);
-            const message = await reciptsServiceObj.editParticularPartPaymentAmount(req.body)
+            const role_type = req.aud.split(":")[1]
+            const user_name = req.aud.split(":")[2]
+            const message = await reciptsServiceObj.editParticularPartPaymentAmount(req.body, user_name, role_type)
 
             res.send({
                 "status": 201,
@@ -266,11 +270,13 @@ router.put('/deleteParticularPartPaymentAmount', jwtHelperObj.verifyAccessToken,
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN") {
             const reciptsServiceObj = new ReceiptServices(req.io);
+            const role_type = req.aud.split(":")[1]
+            const user_name = req.aud.split(":")[2]
             const { pp_id, pd_id } = req.query
             if (!pp_id || pd_id) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("missing pd_id/pp_id.")
             }
-            const message = await reciptsServiceObj.deleteParticularPartPaymentAmount(pp_id, pd_id)
+            const message = await reciptsServiceObj.deleteParticularPartPaymentAmount(pp_id, pd_id, user_name, role_type)
 
             res.send({
                 "status": 201,
@@ -295,8 +301,10 @@ router.put('/deleteParticularProjectPartPayments', jwtHelperObj.verifyAccessToke
             if (!project_id || pd_id) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("missing pd_id/project_id.")
             }
+            const role_type = req.aud.split(":")[1]
+            const user_name = req.aud.split(":")[2]
             const reciptsServiceObj = new ReceiptServices(req.io);
-            const message = await reciptsServiceObj.deleteParticularProjectPartPayments(project_id, pd_id)
+            const message = await reciptsServiceObj.deleteParticularProjectPartPayments(project_id, pd_id, user_name, role_type)
 
             res.send({
                 "status": 201,

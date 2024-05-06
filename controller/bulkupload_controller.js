@@ -16,8 +16,9 @@ function isCsvFile(file) {
 
 router.post("/bulkUpload", jwtHelperObj.verifyAccessToken, upload.single('file'), async (req, res, next) => {
     try {
-        const userRole = req.aud.split(":")[1];
-        if (["SUPER ADMIN", "MANAGER"].includes(userRole)) {
+        const role_type = req.aud.split(":")[1]
+        const user_name = req.aud.split(":")[2]
+        if (["SUPER ADMIN", "MANAGER"].includes(role_type)) {
             if (!req.file || !isCsvFile(req.file)) {
                 return res.status(400).json({ "status": 400, "message": "Invalid file format. Please upload a CSV file." });
             }
@@ -27,7 +28,7 @@ router.post("/bulkUpload", jwtHelperObj.verifyAccessToken, upload.single('file')
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("required project_type")
             }
             const bulkUploadServiceObj = new BulkUploadService(req.io);
-            const result = await bulkUploadServiceObj.processCsvFile(req.file.buffer, project_type.toUpperCase());
+            const result = await bulkUploadServiceObj.processCsvFile(req.file.buffer, project_type.toUpperCase(), user_name, role_type);
             res.json(result);
         } else {
             res.status(401).json({

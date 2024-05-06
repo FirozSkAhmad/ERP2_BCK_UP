@@ -238,7 +238,7 @@ class CommissionService {
         }
     }
 
-    async payCommission(commission_id, commission_amount) {
+    async payCommission(commission_id, commission_amount, user_name, role_type) {
         let transaction;
         try {
             if (commission_id === undefined || commission_id === null) {
@@ -274,8 +274,7 @@ class CommissionService {
 
             await transaction.commit();
             // Emit an event after paying commission
-            this.io.emit('new-payCommission', { message: `New Commission paid successfully. Please refresh the page to see the updates.` });
-
+            this.io.emit('new-payCommission', { user_name, role_type, message: `New Commission paid successfully. Please refresh the page to see the updates.` });
 
             return "COMMISSION PAY SUCCESSFULLY PROCESSED";;
         } catch (err) {

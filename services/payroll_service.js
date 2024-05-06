@@ -6,7 +6,7 @@ class PayrollService {
         this.io = io;
     }
 
-    async addNewPayRoll(payrollDetails) {
+    async addNewPayRoll(payrollDetails, user_name, role_type) {
         return await global.DATA.CONNECTION.mysql.transaction(async (t) => {
             try {
                 // this.validateRequiredFields(payrollDetails);
@@ -43,7 +43,7 @@ class PayrollService {
                 }, { transaction: t })
 
                 // Emit an event after adding a new payroll
-                this.io.emit('new-payroll', { message: `New payroll added successfully. Please refresh the page to see the updates.` });
+                this.io.emit('new-payroll', { user_name, role_type, message: `New payroll added successfully. Please refresh the page to see the updates.` });
 
                 return "Added Payroll Successfully";
 
@@ -160,12 +160,12 @@ class PayrollService {
         }
     }
 
-    async addRoleType(role_type) {
+    async addRoleType(user_name, role_type, roleType) {
         try {
-            await RoleTypesModel.create({ role_type })
+            await RoleTypesModel.create({ role_type: roleType })
 
             // Emit an event after adding a new role type
-            this.io.emit('new-roleType', { message: `New role type added successfully. Please refresh the page to see the updates.` });
+            this.io.emit('new-roleType', { user_name, role_type, message: `New role type added successfully. Please refresh the page to see the updates.` });
 
             return "Added Role Type Successfully";
         }

@@ -113,7 +113,7 @@ class ReceiptServices {
     //     }
     // }
 
-    async payPartPayment(payload) {
+    async payPartPayment(payload, user_name, role_type) {
         let transaction;
         try {
             if (payload.project_id === undefined || payload.project_id === null) {
@@ -165,9 +165,9 @@ class ReceiptServices {
             }
 
             await transaction.commit();
-            
+
             // Emit an event after partial payment
-            this.io.emit('new-partPayment', { message: `New Part payment recorded successfully. Please refresh the page to see the updates.` });
+            this.io.emit('new-partPayment', { user_name, role_type, message: `New Part payment recorded successfully. Please refresh the page to see the updates.` });
 
             return "PAYMENT SUCCESSFULLY PROCESSED";
 

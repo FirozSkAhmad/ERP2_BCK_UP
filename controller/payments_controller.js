@@ -38,10 +38,11 @@ router.get('/getPaymentsList', jwtHelperObj.verifyAccessToken, async (req, res, 
 
 router.post('/payPartPayment', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
-        const role = req.aud.split(":")[1];
-        if (role === "SUPER ADMIN") {
+        const role_type = req.aud.split(":")[1]
+        const user_name = req.aud.split(":")[2]
+        if (role_type === "SUPER ADMIN") {
             const paymentsServiceObj = new PaymentsServices(req.io);
-            const data = await paymentsServiceObj.payPartPayment(req.body)
+            const data = await paymentsServiceObj.payPartPayment(req.body, user_name, role_type)
 
             res.send({
                 "status": 201,

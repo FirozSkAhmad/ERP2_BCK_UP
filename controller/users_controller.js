@@ -38,11 +38,10 @@ router.post('/login', async (req, res, next) => {
 router.post("/resetPasswordSendRequest", async (req,res,next)=>{
     try{
         const userServiceObj = new UserService();
-        const data = await userServiceObj.sendPasswordResetRequest(req.body.emailId);
+        const data = await userServiceObj.sendPasswordResetRequest(req.body.email_id);
         res.send({
             "status": 200,
-            "message": data,
-            "data": data
+            "message": data
         })
     }   
     catch(err){
@@ -50,7 +49,7 @@ router.post("/resetPasswordSendRequest", async (req,res,next)=>{
     }
 })
 
-router.post("/changePassword", async(req,res,next)=>{
+router.patch("/changePassword", async(req,res,next)=>{
     try{
         const userServiceObj = new UserService();
         const data = await userServiceObj.changePassword(req.body.token,req.body.password);

@@ -5,7 +5,7 @@ class MiscellaneousService {
         this.io = io;
     }
 
-    async addMiscellaneous(miscellaneousDetails) {
+    async addMiscellaneous(miscellaneousDetails, user_name, role_type) {
         return await global.DATA.CONNECTION.mysql.transaction(async (t) => {
             try {
                 this.validateRequiredFields(miscellaneousDetails);
@@ -14,7 +14,7 @@ class MiscellaneousService {
                 }, { transaction: t })
 
                 // Emit an event after miscellaneous action
-                this.io.emit('new-miscellaneous', { message: `New miscellaneous added. Please refresh the page to see the updates.` });
+                this.io.emit('new-miscellaneous', { user_name, role_type, message: `New miscellaneous added. Please refresh the page to see the updates.` });
 
                 return "Added Miscellaneous Successfully";
 

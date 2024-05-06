@@ -19,7 +19,7 @@ class ReceiptServices {
         this.io = io;
     }
 
-    async createReceipt(payload, commission_holder_id, role_type) {
+    async createReceipt(payload, commission_holder_id, user_name, role_type) {
         let transaction;
         try {
             transaction = await DATA.CONNECTION.mysql.transaction();
@@ -95,12 +95,12 @@ class ReceiptServices {
             };
 
             const receiptRecord = await ReceiptsModel.create(receiptData, { transaction });
-            
+
 
             await transaction.commit();
 
             // Emit an event after new receipt created
-            this.io.emit('new-receipt', { message: `New miscellaneous added. Please refresh the page to see the updates.` });
+            this.io.emit('new-receipt', { user_name, role_type, message: `New miscellaneous added. Please refresh the page to see the updates.` });
 
             return { message: "Receipt created successfully", receipt_id: receiptRecord.receipt_id };
         } catch (err) {
@@ -271,7 +271,7 @@ class ReceiptServices {
         }
     }
 
-    async validateReceipt(payload, approveOrReject) {
+    async validateReceipt(payload, approveOrReject, user_name, role_type) {
         try {
             // Validate required fields for approval
             if (approveOrReject === "APPROVE") {
@@ -372,7 +372,7 @@ class ReceiptServices {
             });
 
             // Emit an event after validating a new receipt
-            this.io.emit('new-receiptValidate', { message: `New receipt validated successfully. Please refresh the page to see the updates.` });
+            this.io.emit('new-receiptValidate', { user_name, role_type, message: `New receipt validated successfully. Please refresh the page to see the updates.` });
 
             return approveOrReject === "APPROVE" ? "RECEIPT APPROVED SUCCESSFULLY" : "RECEIPT REJECTED SUCCESSFULLY";
         } catch (err) {
@@ -569,7 +569,7 @@ class ReceiptServices {
                 where: {
                     receipt_id
                 },
-                attributes: ['receipt_id', 'client_name', 'client_phn_no','client_emailId', 'client_adhar_no', 'date_of_onboard', 'date_of_validation'],
+                attributes: ['receipt_id', 'client_name', 'client_phn_no', 'client_emailId', 'client_adhar_no', 'date_of_onboard', 'date_of_validation'],
                 include: [
                     {
                         model: UsersModel,
@@ -629,7 +629,7 @@ class ReceiptServices {
         }
     }
 
-    async editParticularPartPaymentAmount(payload) {
+    async editParticularPartPaymentAmount(payload, user_name, role_type) {
         let transaction;
         try {
             // Start a transaction
@@ -706,7 +706,7 @@ class ReceiptServices {
             await transaction.commit();
 
             // Emit an event after editing a part payment
-            this.io.emit('new-partPaymentEdit', { message: `A Part payment edited successfully. Please refresh the page to see the updates.` });
+            this.io.emit('new-partPaymentEdit', { user_name, role_type, message: `A Part payment edited successfully. Please refresh the page to see the updates.` });
 
             return 'Successfully updated the particular part payment amount.';
         } catch (err) {
@@ -724,7 +724,7 @@ class ReceiptServices {
         }
     }
 
-    async deleteParticularPartPaymentAmount(pp_id, pd_id) {
+    async deleteParticularPartPaymentAmount(pp_id, pd_id, user_name, role_type) {
         let transaction;
         try {
             // Start a transaction
@@ -794,7 +794,7 @@ class ReceiptServices {
             await transaction.commit();
 
             // Emit an event after deleting a part payment
-            this.io.emit('new-partPaymentDelete', { message: `A Part payment deleted successfully. Please refresh the page to see the updates.` });
+            this.io.emit('new-partPaymentDelete', { user_name, role_type, message: `A Part payment deleted successfully. Please refresh the page to see the updates.` });
 
             return 'Successfully deleted the particular part payment amount.';
         } catch (err) {
@@ -812,7 +812,7 @@ class ReceiptServices {
         }
     }
 
-    async deleteParticularProjectPartPayments(project_id, pd_id) {
+    async deleteParticularProjectPartPayments(project_id, pd_id, user_name, role_type) {
         let transaction;
         try {
             // Start a transaction
@@ -864,7 +864,7 @@ class ReceiptServices {
             await transaction.commit(); // Commit the transaction
 
             // Emit an event after deleting project part payments
-            this.io.emit('new-ProjectPartPaymentsDelete', { message: `A Project part payments deleted successfully. Please refresh the page to see the updates.` });
+            this.io.emit('new-ProjectPartPaymentsDelete', { user_name, role_type, message: `A Project part payments deleted successfully. Please refresh the page to see the updates.` });
 
             return 'Successfully deleted the entire part payments.';
         } catch (err) {

@@ -8,10 +8,11 @@ const jwtHelperObj = new JwtHelper();
 // Add new Payroll
 router.post('/addMiscellaneous', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
-        const role = req.aud.split(":")[1];
-        if (role === "SUPER ADMIN") {
+        const role_type = req.aud.split(":")[1]
+        const user_name = req.aud.split(":")[2]
+        if (role_type === "SUPER ADMIN") {
             const miscellaneousServiceObj = new MiscellaneousService(req.io);
-            const message = await miscellaneousServiceObj.addMiscellaneous(req.body);
+            const message = await miscellaneousServiceObj.addMiscellaneous(req.body, user_name, role_type);
 
             res.send({
                 "status": 201,
