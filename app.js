@@ -136,8 +136,8 @@ class App {
             checkAndNotifyBlockedProjects();
             console.log("Scheduled tasks are set up and running.");
 
-            checkAndAutoPay()
-            console.log("Auto Payroll are set up and running.");
+            // checkAndAutoPay()
+            // console.log("Auto Payroll are set up and running.");
 
         } catch (error) {
             console.error("An error occurred during app initialization:", error);
