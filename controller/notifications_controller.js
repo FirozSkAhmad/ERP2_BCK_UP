@@ -27,6 +27,7 @@ router.post('/createNotification', jwtHelperObj.verifyAccessToken, async (req, r
 
 router.get('/getNotifications', jwtHelperObj.verifyAccessToken, async (req, res, next) => {
     try {
+        console.log(req.aud)
         const role_type = req.aud.split(":")[1]
         const user_name = req.aud.split(":")[2]
 
