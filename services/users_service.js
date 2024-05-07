@@ -103,8 +103,9 @@ class UserService {
 
     async loginUser(userDetails) {
         try {
+            console.log(userDetails.email_id)
             const userData = await UsersModel.findOne({
-                "where": {
+                where: {
                     email_id: userDetails.email_id
                 }
             })

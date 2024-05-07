@@ -12,9 +12,8 @@ const UsersModel = global.DATA.CONNECTION.mysql.define("users", {
     user_name: {
         type: Sequelize.DataTypes.STRING(100),
         allowNull: false,
-        unique: true,
         validate: {
-            async isUnique(value) {
+            isUnique: async (value) => {
                 const existingUser = await UsersModel.findOne({
                     where: {
                         user_name: value,
@@ -23,8 +22,11 @@ const UsersModel = global.DATA.CONNECTION.mysql.define("users", {
                         }
                     }
                 });
+                if (existingUser) {
+                    throw new Error('Username must be unique');
+                }
             }
-        }
+        }        
     },
     password: {
         type: Sequelize.STRING(200),
@@ -33,9 +35,8 @@ const UsersModel = global.DATA.CONNECTION.mysql.define("users", {
     email_id: {
         type: Sequelize.DataTypes.STRING(100),
         allowNull: false,
-        unique: true,
         validate: {
-            async isUnique(value) {
+            isUnique: async (value) => {
                 const existingUser = await UsersModel.findOne({
                     where: {
                         email_id: value,
@@ -44,8 +45,12 @@ const UsersModel = global.DATA.CONNECTION.mysql.define("users", {
                         }
                     }
                 });
+                if (existingUser) {
+                    throw new Error('Username must be unique');
+                }
             }
         }
+        
     },
     role_type: {
         type: Sequelize.DataTypes.ENUM('SUPER ADMIN', 'SALES PERSON', 'MANAGER', 'CHANNEL PARTNER'),

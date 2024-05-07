@@ -50,10 +50,10 @@ router.patch('/deleteParticularNotification', jwtHelperObj.verifyAccessToken, as
     try {
         const role_type = req.aud.split(":")[1]
         const user_name = req.aud.split(":")[2]
-        const { notificationIndex } = req.body
+        const { notification_id } = req.body
 
         const notificationServiceObj = new NotificationService(req.io);
-        const data = await notificationServiceObj.deleteParticularNotification(notificationIndex, user_name, role_type);
+        const data = await notificationServiceObj.deleteParticularNotification(notification_id, user_name, role_type);
 
         res.send({
             "status": 200,

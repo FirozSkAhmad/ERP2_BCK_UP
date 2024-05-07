@@ -166,9 +166,6 @@ class ReceiptServices {
 
             await transaction.commit();
 
-            // Emit an event after partial payment
-            this.io.emit('new-partPayment', { user_name, role_type, message: `New Part payment recorded successfully. Please refresh the page to see the updates.` });
-
             return "PAYMENT SUCCESSFULLY PROCESSED";
 
         } catch (err) {
@@ -195,6 +192,9 @@ class ReceiptServices {
                 where: { blocked_id: currentDetails.blocked_id },
                 transaction: transaction
             });
+
+            // Emit an event after Blocked Projects update
+            this.io.emit('new-blckPrjUpdate', { user_name, role_type, message: `New Blocked Projects updated successfully. Please refresh the page to see the updates.` });
         } catch (err) {
             console.error("Error in handleBlockedStatus: ", err.message);
             if (transaction) await transaction.rollback();
@@ -232,6 +232,9 @@ class ReceiptServices {
                 where: { project_id: payload.project_id },
                 transaction: transaction
             });
+
+            // Emit an event after Project update to Sold
+            this.io.emit('new-PrjUpdateToSold', { user_name, role_type, message: `New Project updated to Sold successfully. Please refresh the page to see the updates.` });
         } catch (err) {
             console.error("Error in handleSoldStatus: ", err.message);
             if (transaction) await transaction.rollback();
@@ -264,6 +267,9 @@ class ReceiptServices {
                 where: { pd_id: payload.pd_id },
                 transaction: transaction
             });
+
+            // Emit an event after partial payment
+            this.io.emit('new-partPayment', { user_name, role_type, message: `New Part payment recorded successfully. Please refresh the page to see the updates.` });
         } catch (err) {
             console.error("Error in handlePartPaymentStatus: ", err.message);
             if (transaction) await transaction.rollback();

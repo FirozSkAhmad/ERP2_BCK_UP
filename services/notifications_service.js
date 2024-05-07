@@ -27,9 +27,10 @@ class NotificationService {
                 // Retrieve current notifications or initialize if null
                 const notifications = user.notifications ? JSON.parse(user.notifications) : [];
                 const currentNotifications = notifications.length > 0 ? JSON.parse(notifications) : [];
+                const notification_id = currentNotifications.length
 
                 // Append new message to notifications array
-                currentNotifications.push({ message: message, date: new Date(), deleted: false });
+                currentNotifications.push({ notification_id, message: message, date: new Date(), deleted: false });
 
                 // Update user's notifications
                 await UsersModel.update({
@@ -94,7 +95,7 @@ class NotificationService {
     }
 
 
-    async deleteParticularNotification(notificationIndex, userName, roleType) {
+    async deleteParticularNotification(notification_id, userName, roleType) {
         return await global.DATA.CONNECTION.mysql.transaction(async (t) => {
             try {
                 // Find the user by user_name and role_type
@@ -114,12 +115,12 @@ class NotificationService {
                 const currentNotifications = notifications.length > 0 ? JSON.parse(notifications) : [];
 
                 // Check if the index is valid
-                if (notificationIndex < 0 || notificationIndex >= currentNotifications.length) {
+                if (notification_id < 0 || notification_id >= currentNotifications.length) {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid notification index");
                 }
 
                 // Mark the notification as deleted
-                currentNotifications[notificationIndex].deleted = true;
+                currentNotifications[notification_id].deleted = true;
 
                 // Update user's notifications
                 await UsersModel.update({
