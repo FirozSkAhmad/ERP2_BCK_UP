@@ -242,7 +242,7 @@ class UserService {
             }
 
             // Valid email and password
-            const tokenPayload = user.user_id.toString();
+            const tokenPayload = user.user_id + ":" + userData.role_type + ":" + userData.user_name;
 
             const accessToken = await this.jwtObject.generateAccessToken(tokenPayload);
 
@@ -265,7 +265,7 @@ class UserService {
                     return "INVALID LINK/LINK EXPIRED"
                 } else {
                     // Access the decoded data
-                    userId = decoded.aud;
+                    userId = decoded.aud.split(":")[0];//decoded.aud
                 }
             });
             const newPassword = password;
