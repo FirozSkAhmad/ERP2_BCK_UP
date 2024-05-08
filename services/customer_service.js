@@ -87,7 +87,7 @@ class CustomerService {
                         }
                     }, {
                         model: PropertyDetailsModel,
-                        attributes: ['property_price', 'discount_percent'],
+                        attributes: ['property_price', 'discount_percent', 'pending_payment', 'amount_paid_till_now'],
                         include: [
                             {
                                 model: TokenOrAdvanceHistoryModel,
