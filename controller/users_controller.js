@@ -35,31 +35,30 @@ router.post('/login', async (req, res, next) => {
     }
 })
 
-router.post("/resetPasswordSendRequest", async (req,res,next)=>{
-    try{
+router.post("/resetPasswordSendRequest", async (req, res, next) => {
+    try {
         const userServiceObj = new UserService();
         const data = await userServiceObj.sendPasswordResetRequest(req.body.email_id);
         res.send({
             "status": 200,
             "message": data
         })
-    }   
-    catch(err){
+    }
+    catch (err) {
         next(err);
     }
 })
 
-router.patch("/changePassword", async(req,res,next)=>{
-    try{
+router.patch("/changePassword", async (req, res, next) => {
+    try {
         const userServiceObj = new UserService();
-        const data = await userServiceObj.changePassword(req.body.token,req.body.password);
+        const message = await userServiceObj.changePassword(req.body.token, req.body.password);
         res.send({
             "status": 200,
-            "message": data,
-            "data": data
+            message
         })
     }
-    catch(err){
+    catch (err) {
         next(err);
     }
 })

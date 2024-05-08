@@ -260,6 +260,10 @@ class UserService {
 
     async changePassword(token, password) {
         try {
+            if (!token || !password) {
+                throw new global.DATA.PLUGINS.httperrors.BadRequest("token/password is missing in request body");
+            }
+
             let userId = null;
             await global.DATA.PLUGINS.jsonwebtoken.verify(token, process.env.ACCESS_TOKEN_SECRETKEY, (err, decoded) => {
                 if (err) {
@@ -279,16 +283,22 @@ class UserService {
                 where: {
                     user_id: userId
                 }
-            }).catch(err => {
-                console.log("Error while updating the password", err.message);
-                throw err;
             })
 
             return "Password Updated Successfully"
 
         }
         catch (err) {
-            throw err;
+            console.error("Error in changePassword: ", err.message);
+
+            // Rethrow if it's a known error
+            if (err instanceof global.DATA.PLUGINS.httperrors.HttpError) {
+                throw err;
+            } else {
+                // Throw a generic error for unknown issues
+                throw new global.DATA.PLUGINS.httperrors.InternalServerError("An internal server error occurred");
+            }
+
         }
     }
 }
