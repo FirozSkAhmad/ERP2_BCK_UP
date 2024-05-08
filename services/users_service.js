@@ -247,7 +247,7 @@ class UserService {
 
             const accessToken = await this.jwtObject.generateAccessToken(tokenPayload);
 
-            const Link = 'dummy link'//`${process.env.RESET_BASE_URL}/${accessToken}`
+            const Link = `${process.env.RESET_BASE_URL}/changePassword/${accessToken}`
 
             const response = await this.sendLinkToEmail(user.user_name, email_id, Link);
             console.log("accessToken", accessToken)
