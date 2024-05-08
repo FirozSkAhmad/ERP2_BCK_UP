@@ -243,7 +243,7 @@ class UserService {
             }
 
             // Valid email and password
-            const tokenPayload = user.user_id + ":" + userData.role_type + ":" + userData.user_name;
+            const tokenPayload = user.user_id + ":" + user.role_type + ":" + user.user_name;
 
             const accessToken = await this.jwtObject.generateAccessToken(tokenPayload);
 
