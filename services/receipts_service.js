@@ -26,7 +26,6 @@ class ReceiptServices {
 
             // Validate project type and construct identifier
             let payloadIdentifierCheck = this.constructPayloadIdentifier(payload);
-            console.log(payloadIdentifierCheck)
             // Check if project is available
             let checkProject = await ProjectsModel.findOne({
                 where: { pid: payloadIdentifierCheck, status: "AVAILABLE" },
