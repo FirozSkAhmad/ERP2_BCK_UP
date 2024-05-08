@@ -148,15 +148,15 @@ class ReceiptServices {
                 switch (payload.status.toUpperCase()) {
                     case "BLOCK":
                         // Handle the logic for when the status is BLOCKED
-                        await this.handleBlockedStatus(payload, currentDetails, transaction);
+                        await this.handleBlockedStatus(payload, currentDetails, transaction, user_name, role_type);
                         break;
                     case "SOLD":
                         // Handle the logic for when the status is SOLD
-                        await this.handleSoldStatus(payload, currentDetails, transaction);
+                        await this.handleSoldStatus(payload, currentDetails, transaction, user_name, role_type);
                         break;
                     case "PART PAYMENT":
                         // Handle the logic for when the status is PART PAYMENT
-                        await this.handlePartPaymentStatus(payload, currentDetails, transaction);
+                        await this.handlePartPaymentStatus(payload, currentDetails, transaction, user_name, role_type);
                         break;
                     default:
                         // Throw an error if the status is not recognized
@@ -180,7 +180,7 @@ class ReceiptServices {
         }
     }
 
-    async handleBlockedStatus(payload, currentDetails, transaction) {
+    async handleBlockedStatus(payload, currentDetails, transaction, user_name, role_type) {
         try {
             if (payload.added_extra_days === undefined || payload.added_extra_days === null) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("Required Extra days value to increase block days.");
@@ -207,7 +207,7 @@ class ReceiptServices {
         }
     }
 
-    async handleSoldStatus(payload, currentDetails, transaction) {
+    async handleSoldStatus(payload, currentDetails, transaction, user_name, role_type) {
         try {
             const updateDetails = this.calculatePaymentDetails(payload, currentDetails);
 
@@ -247,7 +247,7 @@ class ReceiptServices {
         }
     }
 
-    async handlePartPaymentStatus(payload, currentDetails, transaction) {
+    async handlePartPaymentStatus(payload, currentDetails, transaction, user_name, role_type) {
         try {
             const updateDetails = this.calculatePaymentDetails(payload, currentDetails);
 
