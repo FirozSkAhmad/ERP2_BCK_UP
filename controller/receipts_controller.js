@@ -273,7 +273,7 @@ router.put('/deleteParticularPartPaymentAmount', jwtHelperObj.verifyAccessToken,
             const role_type = req.aud.split(":")[1]
             const user_name = req.aud.split(":")[2]
             const { pp_id, pd_id } = req.query
-            if (!pp_id || pd_id) {
+            if (!pp_id || !pd_id) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("missing pd_id/pp_id.")
             }
             const message = await reciptsServiceObj.deleteParticularPartPaymentAmount(pp_id, pd_id, user_name, role_type)
@@ -298,7 +298,7 @@ router.put('/deleteParticularProjectPartPayments', jwtHelperObj.verifyAccessToke
     try {
         if (req.aud.split(":")[1] === "SUPER ADMIN") {
             const { project_id, pd_id } = req.query
-            if (!project_id || pd_id) {
+            if (!project_id || !pd_id) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("missing pd_id/project_id.")
             }
             const role_type = req.aud.split(":")[1]
@@ -328,7 +328,7 @@ router.get('/getDeletedHistoryList', jwtHelperObj.verifyAccessToken, async (req,
         if (req.aud.split(":")[1] === "SUPER ADMIN" || req.aud.split(":")[1] === "MANAGER") {
             const reciptsServiceObj = new ReceiptServices();
             const { deletedFilter, statusFilter } = req.query
-            if (!statusFilter || deletedFilter) {
+            if (!statusFilter || !deletedFilter) {
                 throw new global.DATA.PLUGINS.httperrors.BadRequest("missing statusFilter/deletedFilter.")
             }
             const data = await reciptsServiceObj.getDeletedHistoryList(deletedFilter, statusFilter)
