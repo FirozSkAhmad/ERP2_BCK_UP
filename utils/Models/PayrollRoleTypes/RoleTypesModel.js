@@ -7,7 +7,7 @@ const RoleTypesModel =  global.DATA.CONNECTION.mysql.define("payroll_roletypes",
         allowNull: false,
         autoIncrement: true
     },
-    roleType: {
+    role_type: {
         type: Sequelize.STRING(100),
         allowNull: false
     },
