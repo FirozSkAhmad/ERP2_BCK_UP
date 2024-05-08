@@ -408,7 +408,7 @@ class ProjectsService {
             })
 
             // Map the response to get project names
-            const villaNumbers = response.map(item => item.tower_number);
+            const villaNumbers = response.map(item => item.villa_number);
 
             // Use a Set to filter out unique names and then convert it back to an array
             const uniqueVillaNumbers = [...new Set(villaNumbers)];
@@ -437,7 +437,7 @@ class ProjectsService {
             })
 
             // Map the response to get project names
-            const plotNumbers = response.map(item => item.tower_number);
+            const plotNumbers = response.map(item => item.plot_number);
 
             // Use a Set to filter out unique names and then convert it back to an array
             const uniquePlotNumbers = [...new Set(plotNumbers)];
@@ -466,7 +466,7 @@ class ProjectsService {
             })
 
             // Map the response to get project names
-            const plotNumbers = response.map(item => item.tower_number);
+            const plotNumbers = response.map(item => item.plot_number);
 
             // Use a Set to filter out unique names and then convert it back to an array
             const uniquePlotNumbers = [...new Set(plotNumbers)];
