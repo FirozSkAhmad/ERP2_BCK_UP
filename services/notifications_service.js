@@ -26,15 +26,15 @@ class NotificationService {
 
                 // Retrieve current notifications or initialize if null
                 const notifications = user.notifications ? JSON.parse(user.notifications) : [];
-                const currentNotifications = notifications.length > 0 ? JSON.parse(notifications) : [];
-                const notification_id = currentNotifications.length
+                // const currentNotifications = notifications.length > 0 ? JSON.parse(notifications) : [];
+                const notification_id = notifications.length
 
                 // Append new message to notifications array
-                currentNotifications.push({ notification_id, message: message, date: new Date(), deleted: false });
+                notifications.push({ notification_id, message: message, date: new Date(), deleted: false });
 
                 // Update user's notifications
                 await UsersModel.update({
-                    notifications: JSON.stringify(currentNotifications)
+                    notifications: JSON.stringify(notifications)
                 }, {
                     where: {
                         user_id: user.user_id
@@ -73,9 +73,11 @@ class NotificationService {
 
 
             const notifications = user.notifications ? JSON.parse(user.notifications) : [];
-            const currentNotifications = notifications.length > 0 ? JSON.parse(notifications) : [];
+
+            // const currentNotifications = notifications.length > 0 ? JSON.parse(notifications) : [];
+
             // Check if notifications exist, filter out deleted ones and sort by date
-            const filteredNotifications = (currentNotifications).filter(n => !n.deleted).sort((a, b) => {
+            const filteredNotifications = (notifications).filter(n => !n.deleted).sort((a, b) => {
                 // Assuming 'date' is stored in a way that can be directly compared
                 return new Date(b.date) - new Date(a.date);  // Sort by date descending
             });
