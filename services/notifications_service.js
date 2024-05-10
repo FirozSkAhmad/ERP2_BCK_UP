@@ -114,19 +114,19 @@ class NotificationService {
                 }
 
                 const notifications = user.notifications ? JSON.parse(user.notifications) : [];
-                const currentNotifications = notifications.length > 0 ? JSON.parse(notifications) : [];
+                // const currentNotifications = notifications.length > 0 ? JSON.parse(notifications) : [];
 
                 // Check if the index is valid
-                if (notification_id < 0 || notification_id >= currentNotifications.length) {
+                if (notification_id < 0 || notification_id >= notifications.length) {
                     throw new global.DATA.PLUGINS.httperrors.BadRequest("Invalid notification index");
                 }
 
                 // Mark the notification as deleted
-                currentNotifications[notification_id].deleted = true;
+                notifications[notification_id].deleted = true;
 
                 // Update user's notifications
                 await UsersModel.update({
-                    notifications: JSON.stringify(currentNotifications)
+                    notifications: JSON.stringify(notifications)
                 }, {
                     where: {
                         user_id: user.user_id
