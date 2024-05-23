@@ -99,7 +99,7 @@ class ReceiptServices {
             await transaction.commit();
 
             // Emit an event after new receipt created
-            this.io.emit('new-receipt', { user_name, role_type, message: `New miscellaneous added. Please refresh the page to see the updates.` });
+            this.io.emit('new-receipt', { user_name, role_type, message: `New receipt added. Please refresh the page to see the updates.` });
 
             return { message: "Receipt created successfully", receipt_id: receiptRecord.receipt_id };
         } catch (err) {
