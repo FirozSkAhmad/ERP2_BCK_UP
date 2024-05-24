@@ -59,20 +59,45 @@ class BulkUpload {
             // Validate required fields based on type
             this.validateRequiredFields(data, type);
 
-            await global.DATA.CONNECTION.mysql.transaction(async (t) => {
-                const preparedData = data.map(item => ({
-                    project_type: type,
-                    project_name: item['Project Name'],
-                    tower_number: item['Tower Number'] || null,
-                    flat_number: item['Flat Number'] || null,
-                    villa_number: item['Villa Number'] || null,
-                    plot_number: item['Plot Number'] || null,
-                    sq_yards: item['Sq.yards'] || null,
-                    pid: this.generatePayloadIdentifier(item, type),
-                    status: 'AVAILABLE',
-                }));
-                await Model.bulkCreate(preparedData, { transaction: t });
+            // Prepare data and generate pids, adding index to each item
+            const preparedData = data.map((item, index) => ({
+                index, // Add the index
+                project_type: type,
+                project_name: item['Project Name'],
+                tower_number: item['Tower Number'] || null,
+                flat_number: item['Flat Number'] || null,
+                villa_number: item['Villa Number'] || null,
+                plot_number: item['Plot Number'] || null,
+                sq_yards: item['Sq.yards'] || null,
+                pid: this.generatePayloadIdentifier(item, type),
+                status: 'AVAILABLE',
+                rawData: item, // Keep the raw data for error reporting
+            }));
+
+            // Check for existing pids in the database
+            const existingPids = await Model.findAll({
+                where: {
+                    pid: preparedData.map(item => item.pid)
+                },
+                attributes: ['pid']
             });
+
+            const existingPidSet = new Set(existingPids.map(item => item.pid));
+            const duplicateRows = preparedData.filter(item => existingPidSet.has(item.pid));
+
+            if (duplicateRows.length > 0) {
+                const duplicateRowData = duplicateRows.map(item => `row: ${item.index + 1}, pid: ${item.pid}`).join(' ; ');
+                throw new global.DATA.PLUGINS.httperrors.Conflict(`Duplicate rows with same pids found in: ${duplicateRowData}`);
+            }
+
+            // Insert data
+            await global.DATA.CONNECTION.mysql.transaction(async (t) => {
+                await Model.bulkCreate(preparedData.map(item => {
+                    const { rawData, index, ...insertData } = item; // Exclude rawData and index from the insertion
+                    return insertData;
+                }), { transaction: t });
+            });
+
             // Emit an event after bulk upload
             this.io.emit('new-bulkUpload', { user_name, role_type, message: `New projects bulk uploaded. Please refresh the page to see the updates.` });
 
